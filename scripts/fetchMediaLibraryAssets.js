@@ -7,7 +7,7 @@ const async = require('async');
 
 const libraries = require('./lib/libraries');
 
-const ASSET_HOST = 'cdn.assets.scratch.mit.edu';
+const ASSET_HOST = 'dogoblockcdn.dogomaker.com';
 const NUM_SIMULTANEOUS_DOWNLOADS = 5;
 const OUT_PATH = path.resolve('static', 'assets');
 

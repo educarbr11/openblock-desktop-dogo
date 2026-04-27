@@ -64,6 +64,12 @@ const makeConfig = function (defaultConfig, options) {
     const config = merge.smart(defaultConfig, {
         devtool: 'cheap-module-eval-source-map',
         mode: isProduction ? 'production' : 'development',
+        output: {
+            hashFunction: 'sha256'
+        },
+        optimization: {
+            minimize: false
+        },
         module: {
             rules: [
                 {
