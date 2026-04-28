@@ -46,6 +46,10 @@ module.exports = defaultConfig =>
                     from: path.join(getModulePath('openblock-gui'), 'src', 'lib', 'libraries', '*.json'),
                     to: 'static/libraries',
                     flatten: true
+                }]),
+                new CopyWebpackPlugin([{
+                    from: path.join(getModulePath('openblock-gui'), 'static', 'ml-vendor'),
+                    to: 'static/ml-vendor'
                 }])
             ]
         }
