@@ -27,6 +27,12 @@ jobs:
         with:
           node-version: '16.x'
 
+      - name: Use Bash for npm scripts
+        shell: bash
+        run: |
+          npm config set script-shell "C:/Program Files/Git/bin/bash.exe"
+          npm config get script-shell
+
       - name: Npm Install
         shell: bash
         run: |

@@ -59,7 +59,7 @@ jobs:
 
   build-windows:
     needs: create-release
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
 
@@ -74,6 +74,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '16.x'
+
+      - name: Use Bash for npm scripts
+        shell: bash
+        run: |
+          npm config set script-shell "C:/Program Files/Git/bin/bash.exe"
+          npm config get script-shell
 
       - name: Npm Install
         shell: bash
