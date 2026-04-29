@@ -4,9 +4,23 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const makeConfig = require('./webpack.makeConfig.js');
 
+const localOpenBlockVMPath = path.resolve(__dirname, '..', 'openblock-vm');
+const hasLocalOpenBlockVM = (() => {
+    try {
+        require.resolve(path.join(localOpenBlockVMPath, 'package.json'));
+        return true;
+    } catch (e) {
+        return false;
+    }
+})();
+
 // Fixed the issue that when using link to local gui package in node16, an error message appears saying that the
 // blocks vm package in gui cannot be found.
 const getModulePath = moduleName => {
+    if (moduleName === 'openblock-vm' && hasLocalOpenBlockVM) {
+        return localOpenBlockVMPath;
+    }
+
     try {
         return path.dirname(require.resolve(`${moduleName}/package.json`));
     } catch (e) {
@@ -28,6 +42,7 @@ module.exports = defaultConfig =>
             disableDefaultRulesForExtensions: ['js', 'jsx', 'css', 'svg', 'png', 'wav', 'gif', 'jpg', 'ttf'],
             babelPaths: [
                 path.resolve(__dirname, 'src', 'renderer'),
+                ...(hasLocalOpenBlockVM ? [path.join(localOpenBlockVMPath, 'src')] : []),
                 /node_modules[\\/]+scratch-[^\\/]+[\\/]+src/,
                 /node_modules[\\/]+openblock-[^\\/]+[\\/]+src/,
                 /node_modules[\\/]+pify/,

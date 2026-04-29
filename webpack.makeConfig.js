@@ -16,6 +16,9 @@ const postcssVars = require('postcss-simple-vars');
 const postcssImport = require('postcss-import');
 
 const isProduction = (process.env.NODE_ENV === 'production');
+const workspaceRoot = path.resolve(__dirname, '..');
+const localOpenBlockVMPath = path.resolve(__dirname, '..', 'openblock-vm');
+const hasLocalOpenBlockVM = fs.existsSync(path.join(localOpenBlockVMPath, 'package.json'));
 
 const electronVersion = childProcess.execSync(`${electronPath} --version`, {encoding: 'utf8'}).trim();
 console.log(`Targeting Electron ${electronVersion}`); // eslint-disable-line no-console
@@ -38,7 +41,8 @@ const makeConfig = function (defaultConfig, options) {
     if (options.useReact) {
         babelOptions.presets = babelOptions.presets.concat('@babel/preset-react');
         babelOptions.plugins.push(['react-intl', {
-            messagesDir: './translations/messages/'
+            messagesDir: './translations/messages/',
+            workspaceRoot
         }]);
     }
 
@@ -143,7 +147,10 @@ const makeConfig = function (defaultConfig, options) {
             alias: {
                 // act like scratch-gui has this line in its package.json:
                 //   "browser": "./src/index.js"
-                'openblock-gui$': path.resolve(__dirname, 'node_modules', 'openblock-gui', 'src', 'index.js')
+                'openblock-gui$': path.resolve(__dirname, 'node_modules', 'openblock-gui', 'src', 'index.js'),
+                ...(hasLocalOpenBlockVM ? {
+                    'openblock-vm': localOpenBlockVMPath
+                } : {})
             }
         }
     });
