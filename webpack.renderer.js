@@ -4,7 +4,9 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const makeConfig = require('./webpack.makeConfig.js');
 
-const localOpenBlockVMPath = path.resolve(__dirname, '..', 'openblock-vm');
+const localOpenBlockVMPath = process.env.OPENBLOCK_VM_PATH ?
+    path.resolve(process.env.OPENBLOCK_VM_PATH) :
+    path.resolve(__dirname, '..', 'openblock-vm');
 const hasLocalOpenBlockVM = (() => {
     try {
         require.resolve(path.join(localOpenBlockVMPath, 'package.json'));

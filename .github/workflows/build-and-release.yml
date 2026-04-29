@@ -63,6 +63,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Checkout OpenBlock VM
+        uses: actions/checkout@v4
+        with:
+          repository: educarbr11/openblock-vm
+          ref: dogo-dev
+          path: openblock-vm
+
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
@@ -78,6 +85,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           NODE_ENV: production
           NODE_OPTIONS: --max_old_space_size=4096
+          OPENBLOCK_VM_PATH: ${{ github.workspace }}/openblock-vm
         run: npm run publish
 
   build-mac:
@@ -85,6 +93,13 @@ jobs:
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
+
+      - name: Checkout OpenBlock VM
+        uses: actions/checkout@v4
+        with:
+          repository: educarbr11/openblock-vm
+          ref: dogo-dev
+          path: openblock-vm
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -111,6 +126,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           PYTHON_PATH: python
           USE_HARD_LINKS: false
+          OPENBLOCK_VM_PATH: ${{ github.workspace }}/openblock-vm
         # The installation file is too large to be published in github release
         run: |
           export PYTHON_PATH=$(pyenv root)/shims/python
@@ -143,6 +159,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+
+      - name: Checkout OpenBlock VM
+        uses: actions/checkout@v4
+        with:
+          repository: educarbr11/openblock-vm
+          ref: dogo-dev
+          path: openblock-vm
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -177,4 +200,5 @@ jobs:
           NODE_OPTIONS: --max_old_space_size=8192
           CSC_IDENTITY_AUTO_DISCOVERY: false
           USE_HARD_LINKS: false
+          OPENBLOCK_VM_PATH: ${{ github.workspace }}/openblock-vm
         run: npm run publish

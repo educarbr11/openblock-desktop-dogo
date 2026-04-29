@@ -17,7 +17,9 @@ const postcssImport = require('postcss-import');
 
 const isProduction = (process.env.NODE_ENV === 'production');
 const workspaceRoot = path.resolve(__dirname, '..');
-const localOpenBlockVMPath = path.resolve(__dirname, '..', 'openblock-vm');
+const localOpenBlockVMPath = process.env.OPENBLOCK_VM_PATH ?
+    path.resolve(process.env.OPENBLOCK_VM_PATH) :
+    path.resolve(__dirname, '..', 'openblock-vm');
 const hasLocalOpenBlockVM = fs.existsSync(path.join(localOpenBlockVMPath, 'package.json'));
 
 const electronVersion = childProcess.execSync(`${electronPath} --version`, {encoding: 'utf8'}).trim();
