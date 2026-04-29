@@ -1,4 +1,4 @@
-name: Sync Release to Gitee
+name: Sync Release to Baidu Netdisk
 
 on:
   release:
@@ -36,7 +36,21 @@ jobs:
           wget -q $url -P ./downloads
         done
 
+    - name: Check Baidu Netdisk secrets
+      id: baidu_secrets
+      env:
+        BN_BDUSS: ${{ secrets.BN_BDUSS }}
+        BN_STOKEN: ${{ secrets.BN_STOKEN }}
+      run: |
+        if [ -n "$BN_BDUSS" ] && [ -n "$BN_STOKEN" ]; then
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "configured=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Skipping Baidu Netdisk upload because BN_BDUSS or BN_STOKEN is not configured."
+        fi
+
     - name: Upload artifacts to Baidu Netdisk
+      if: steps.baidu_secrets.outputs.configured == 'true'
       uses: openblockcc/baidu-netdisk-upload-action@v1
       with:
         bduss: ${{ secrets.BN_BDUSS }}

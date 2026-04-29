@@ -10,6 +10,9 @@ on:
       - 'doc/*'
       - '.github/*'
 
+permissions:
+  contents: write
+
 jobs:
   create-release:
     runs-on: ubuntu-24.04
@@ -86,15 +89,27 @@ jobs:
         run: |
           npm ci
 
-      - name: Build and Publish
+      - name: Build Dist
         shell: bash
         env:
           GA_ID: ${{ secrets.GA_ID }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           NODE_ENV: production
           NODE_OPTIONS: --max_old_space_size=4096
           OPENBLOCK_VM_PATH: ${{ github.workspace }}/openblock-vm
-        run: npm run publish
+        run: npm run dist
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/OpenBlock-Desktop*.exe
+            dist/OpenBlock-Desktop*.exe.blockmap
+            dist/latest*.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-linux:
     needs: create-release
@@ -134,13 +149,24 @@ jobs:
           \ \ \ \ }
           ' scripts/electron-builder-wrapper.js
 
-      - name: Build and Publish
+      - name: Build Dist
         env:
           GA_ID: ${{ secrets.GA_ID }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           NODE_ENV: production
           NODE_OPTIONS: --max_old_space_size=8192
           CSC_IDENTITY_AUTO_DISCOVERY: false
           USE_HARD_LINKS: false
           OPENBLOCK_VM_PATH: ${{ github.workspace }}/openblock-vm
-        run: npm run publish
+        run: npm run dist
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/OpenBlock-Desktop*.deb
+            dist/latest*.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
