@@ -28,10 +28,12 @@ jobs:
           node-version: '16.x'
 
       - name: Npm Install
+        shell: bash
         run: |
           npm ci
 
       - name: Build Dist
+        shell: bash
         env:
           GA_ID: ${{ secrets.GA_ID }}
           NODE_ENV: production

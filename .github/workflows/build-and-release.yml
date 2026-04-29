@@ -76,10 +76,12 @@ jobs:
           node-version: '16.x'
 
       - name: Npm Install
+        shell: bash
         run: |
           npm ci
 
       - name: Build and Publish
+        shell: bash
         env:
           GA_ID: ${{ secrets.GA_ID }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
