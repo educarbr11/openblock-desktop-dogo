@@ -105,8 +105,8 @@ jobs:
           draft: true
           fail_on_unmatched_files: true
           files: |
-            dist/OpenBlock-Desktop*.exe
-            dist/OpenBlock-Desktop*.exe.blockmap
+            dist/DoGoBlock*.exe
+            dist/DoGoBlock*.exe.blockmap
             dist/latest*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -166,7 +166,7 @@ jobs:
           draft: true
           fail_on_unmatched_files: true
           files: |
-            dist/OpenBlock-Desktop*.deb
+            dist/DoGoBlock*.deb
             dist/latest*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
