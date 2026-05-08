@@ -4,21 +4,16 @@ import styles from './license.css';
 import bindAll from 'lodash.bindall';
 import classNames from 'classnames';
 
-import OpenBlockLogo from '../icon/logo-OpenBlockcc.svg';
-import ScratchFoundationLogo from '../icon/logo-ScratchFoundation.svg';
-
 // Insert new copyright information at the head of the array to add a new copyright notice
 const copyrightInformations = [
     {
         id: 'OpenBlock.cc',
-        logo: OpenBlockLogo,
         link: 'https://www.openblock.cc/',
         license: 'MIT'
     },
     {
         id: 'Scratch Foundation',
         link: 'https://www.scratchfoundation.org/',
-        logo: ScratchFoundationLogo,
         license: 'BSD-3-Clause'
     }
 ];
@@ -131,13 +126,6 @@ class LicenseElement extends React.Component {
                     [styles.isSelected]: this.state.selectedTab === item.id
                 })}
             >
-                <img
-                    alt={item.id}
-                    className={styles.logo}
-                    draggable={false}
-                    src={item.logo}
-                    onClick={this.handleClickLogo}
-                />
                 <h4>{item.license} License</h4>
                 <h4>Copyright &copy; {item.id}</h4>
                 {licenseContent[item.license]}

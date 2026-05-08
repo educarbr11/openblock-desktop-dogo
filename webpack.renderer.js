@@ -7,9 +7,20 @@ const makeConfig = require('./webpack.makeConfig.js');
 const localOpenBlockVMPath = process.env.OPENBLOCK_VM_PATH ?
     path.resolve(process.env.OPENBLOCK_VM_PATH) :
     path.resolve(__dirname, '..', 'openblock-vm');
+const localOpenBlockGUIPath = process.env.OPENBLOCK_GUI_PATH ?
+    path.resolve(process.env.OPENBLOCK_GUI_PATH) :
+    path.resolve(__dirname, '..', 'openblock-gui');
 const hasLocalOpenBlockVM = (() => {
     try {
         require.resolve(path.join(localOpenBlockVMPath, 'package.json'));
+        return true;
+    } catch (e) {
+        return false;
+    }
+})();
+const hasLocalOpenBlockGUI = (() => {
+    try {
+        require.resolve(path.join(localOpenBlockGUIPath, 'package.json'));
         return true;
     } catch (e) {
         return false;
@@ -21,6 +32,9 @@ const hasLocalOpenBlockVM = (() => {
 const getModulePath = moduleName => {
     if (moduleName === 'openblock-vm' && hasLocalOpenBlockVM) {
         return localOpenBlockVMPath;
+    }
+    if (moduleName === 'openblock-gui' && hasLocalOpenBlockGUI) {
+        return localOpenBlockGUIPath;
     }
 
     try {
@@ -45,6 +59,7 @@ module.exports = defaultConfig =>
             babelPaths: [
                 path.resolve(__dirname, 'src', 'renderer'),
                 ...(hasLocalOpenBlockVM ? [path.join(localOpenBlockVMPath, 'src')] : []),
+                ...(hasLocalOpenBlockGUI ? [path.join(localOpenBlockGUIPath, 'src')] : []),
                 /node_modules[\\/]+scratch-[^\\/]+[\\/]+src/,
                 /node_modules[\\/]+openblock-[^\\/]+[\\/]+src/,
                 /node_modules[\\/]+pify/,

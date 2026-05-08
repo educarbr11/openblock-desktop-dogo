@@ -1,9 +1,9 @@
 {
   "name": "openblock-desktop",
-  "productName": "OpenBlockDesktop",
-  "description": "OpenBlock as a self-contained desktop application",
+  "productName": "DoGoBlock",
+  "description": "DoGoBlock as a self-contained desktop application",
   "author": "Openblock.cc Team <contact@openblock.cc> (http://www.openblock.cc/)",
-  "version": "2.6.6",
+  "version": "2.6.11",
   "license": "MIT",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",

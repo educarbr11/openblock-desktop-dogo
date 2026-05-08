@@ -182,6 +182,7 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             const childProps = omit(this.props, Object.keys(ScratchDesktopGUIComponent.propTypes));
 
             return (<WrappedComponent
+                canChangeLanguage
                 canEditTitle
                 canModifyCloudData={false}
                 canSave={false}

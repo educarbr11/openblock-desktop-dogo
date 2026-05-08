@@ -4,14 +4,14 @@ directories:
 extraFiles: ['LICENSE', 'LICENSE.ScratchFoundation', 'TRADEMARK', "tools", "external-resources", 'firmwares', "drivers"]
 
 appId: openblock.cc.openblock-desktop
-productName: "OpenBlockDesktop"
+productName: "DoGoBlock"
 publish:
   - provider: github
-artifactName: "OpenBlock-Desktop_v${version}_${os}_${arch}.${ext}"
+artifactName: "DoGoBlock_v${version}_${os}_${arch}.${ext}"
 
 fileAssociations:
   ext: ob
-  name: OpenBlock project file
+  name: DoGoBlock project file
   role: Editor
   icon: buildResources/OpenBlockFile.ico
 
@@ -33,7 +33,7 @@ mac:
     - dmg
     # - mas
 dmg:
-  title: "OpenBlock-Desktop_${version}"
+  title: "DoGoBlock_${version}"
   format: UDRO
 # mas:
 #   category: public.app-category.education
@@ -52,7 +52,7 @@ win:
     - nsis
 # appx:
 #   identityName: "OpenblockTeam.OpenblockDesktop
-#   publisherDisplayName: "OpenBlock Team"
+#   publisherDisplayName: "DoGoBlock Team"
 #   publisher: "CN=2EC43DF1-469A-4119-9AB9-568A0A1FF65F"
 nsis:
   oneClick: false # allow user to choose per-user or per-machine
@@ -67,7 +67,7 @@ linux:
   desktop:
     entry:
       Encoding: UTF-8
-      Name: OpenBlockDesktop
+      Name: DoGoBlock
       Icon: openblock-desktop
       Type: Application
       Terminal: false

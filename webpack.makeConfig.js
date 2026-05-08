@@ -20,7 +20,11 @@ const workspaceRoot = path.resolve(__dirname, '..');
 const localOpenBlockVMPath = process.env.OPENBLOCK_VM_PATH ?
     path.resolve(process.env.OPENBLOCK_VM_PATH) :
     path.resolve(__dirname, '..', 'openblock-vm');
+const localOpenBlockGUIPath = process.env.OPENBLOCK_GUI_PATH ?
+    path.resolve(process.env.OPENBLOCK_GUI_PATH) :
+    path.resolve(__dirname, '..', 'openblock-gui');
 const hasLocalOpenBlockVM = fs.existsSync(path.join(localOpenBlockVMPath, 'package.json'));
+const hasLocalOpenBlockGUI = fs.existsSync(path.join(localOpenBlockGUIPath, 'package.json'));
 
 const electronVersion = childProcess.execSync(`${electronPath} --version`, {encoding: 'utf8'}).trim();
 console.log(`Targeting Electron ${electronVersion}`); // eslint-disable-line no-console
@@ -149,7 +153,9 @@ const makeConfig = function (defaultConfig, options) {
             alias: {
                 // act like scratch-gui has this line in its package.json:
                 //   "browser": "./src/index.js"
-                'openblock-gui$': path.resolve(__dirname, 'node_modules', 'openblock-gui', 'src', 'index.js'),
+                'openblock-gui': hasLocalOpenBlockGUI ?
+                    localOpenBlockGUIPath :
+                    path.resolve(__dirname, 'node_modules', 'openblock-gui'),
                 ...(hasLocalOpenBlockVM ? {
                     'openblock-vm': localOpenBlockVMPath
                 } : {})
