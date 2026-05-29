@@ -3,7 +3,7 @@
   "productName": "DoGoBlock",
   "description": "DoGoBlock as a self-contained desktop application",
   "author": "Openblock.cc Team <contact@openblock.cc> (http://www.openblock.cc/)",
-  "version": "2.6.16",
+  "version": "2.6.17",
   "license": "MIT",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
@@ -32,11 +32,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/educarbr11/openblock-gui-dogo.git"
+    "url": "git+https://github.com/educarbr11/openblock-gui-dogo.git"
   },
   "dependencies": {
     "bytes": "^3.1.2",
-    "openblock-link": "git+https://github.com/educarbr11/openblock-link-dogo.git#053c19e0ef6b4e2d2b888d1c1820a6792b0866af",
+    "openblock-link": "git+https://github.com/educarbr11/openblock-link-dogo.git#053c19e9c905652009296d30ba5769f96567e817",
     "openblock-resource": "^0.2.0-prerelease.20250302101433",
     "source-map-support": "^0.5.19"
   },
@@ -84,7 +84,7 @@
     "monaco-editor-webpack-plugin": "^1.7.0",
     "nets": "^3.2.0",
     "node-abort-controller": "^3.0.1",
-    "openblock-gui": "github:educarbr11/openblock-gui-dogo#openblock-desktop-v2.6.13",
+    "openblock-gui": "git+https://github.com/educarbr11/openblock-gui-dogo.git#8564904bc9ee62295b2ba8f5acc6176a5a629cff",
     "openblock-l10n": "^3.15.20250608130541",
     "openblock-parse-release-message": "0.0.4",
     "postcss-import": "^12.0.1",
