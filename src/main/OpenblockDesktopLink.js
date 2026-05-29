@@ -2,16 +2,20 @@ import {app} from 'electron';
 import path from 'path';
 import os from 'os';
 import {execFile, spawn} from 'child_process';
+import EventEmitter from 'events';
 import fs from 'fs-extra';
 
 import sudo from 'sudo-prompt';
 import {productName} from '../../package.json';
+import log from '../common/log';
 
 import OpenBlockLink from 'openblock-link';
 import OpenblockResourceServer from 'openblock-resource';
 
-class OpenblockDesktopLink {
+class OpenblockDesktopLink extends EventEmitter {
     constructor () {
+        super();
+
         this._resourceServer = null;
 
         this.appPath = app.getAppPath();
@@ -37,6 +41,15 @@ class OpenblockDesktopLink {
         }
 
         this._link = new OpenBlockLink(this.dataPath, path.join(this.appPath, 'tools'));
+        this._link.on('error', message => {
+            log.error(message);
+            this.emit('link-error', message);
+        });
+        this._link.on('port-in-use', () => {
+            const message = 'The local hardware server port 20111 is already used by another DoGoBlock Link instance.';
+            log.warn(message);
+            this.emit('link-warning', message);
+        });
         this._resourceServer = new OpenblockResourceServer(cacheResourcesPath,
             path.join(this.appPath, 'external-resources'),
             app.getLocaleCountryCode());

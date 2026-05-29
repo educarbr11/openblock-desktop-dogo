@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "bytes": "^3.1.2",
-    "openblock-link": "^0.2.0-prerelease.20250608112023",
+    "openblock-link": "git+https://github.com/educarbr11/openblock-link-dogo.git#053c19e0ef6b4e2d2b888d1c1820a6792b0866af",
     "openblock-resource": "^0.2.0-prerelease.20250302101433",
     "source-map-support": "^0.5.19"
   },

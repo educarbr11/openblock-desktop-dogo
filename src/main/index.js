@@ -21,6 +21,7 @@ import locales from 'openblock-l10n/locales/desktop-msgs';
 
 const storage = new ElectronStore();
 const desktopLink = new DesktopLink();
+let pendingLinkError = null;
 
 formatMessage.setup({translations: locales});
 
@@ -547,12 +548,53 @@ app.on('ready', () => {
         });
     });
 
+    desktopLink.on('link-error', message => {
+        pendingLinkError = message;
+        log.error(message);
+        if (_windows.main) {
+            dialog.showMessageBox(_windows.main, {
+                type: 'error',
+                title: productName,
+                message: formatMessage({
+                    id: 'index.openblockLinkPortError',
+                    default: 'DoGoBlock could not start the local hardware server.',
+                    description: 'prompt for local hardware server port conflict'
+                }),
+                detail: `${message}\n\n${formatMessage({
+                    id: 'index.openblockLinkPortErrorInstructions',
+                    default: 'Close other DoGoBlock/OpenBlock windows or stop the process using port 20111, ' +
+                        'then restart DoGoBlock.',
+                    description: 'instructions for fixing local hardware server port conflict'
+                })}`
+            });
+        }
+    });
+
     // create a loading windows let user know the app is starting
     _windows.loading = createLoadingWindow();
     _windows.loading.once('show', () => {
         desktopLink.start();
 
         _windows.main = createMainWindow();
+        _windows.main.once('ready-to-show', () => {
+            if (pendingLinkError) {
+                dialog.showMessageBox(_windows.main, {
+                    type: 'error',
+                    title: productName,
+                    message: formatMessage({
+                        id: 'index.openblockLinkPortError',
+                        default: 'DoGoBlock could not start the local hardware server.',
+                        description: 'prompt for local hardware server port conflict'
+                    }),
+                    detail: `${pendingLinkError}\n\n${formatMessage({
+                        id: 'index.openblockLinkPortErrorInstructions',
+                        default: 'Close other DoGoBlock/OpenBlock windows or stop the process using port 20111, ' +
+                            'then restart DoGoBlock.',
+                        description: 'instructions for fixing local hardware server port conflict'
+                    })}`
+                });
+            }
+        });
         _windows.main.on('closed', () => {
             delete _windows.main;
         });
