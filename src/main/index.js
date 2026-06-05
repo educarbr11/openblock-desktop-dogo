@@ -22,6 +22,7 @@ import locales from 'openblock-l10n/locales/desktop-msgs';
 const storage = new ElectronStore();
 const desktopLink = new DesktopLink();
 let pendingLinkError = null;
+let pendingBluetoothDeviceSelection = null;
 
 formatMessage.setup({translations: locales});
 
@@ -30,6 +31,7 @@ app.allowRendererProcessReuse = true;
 
 // allow connect to localhost
 app.commandLine.appendSwitch('allow-insecure-localhost', 'true');
+app.commandLine.appendSwitch('enable-experimental-web-platform-features', 'true');
 
 // enable gpu and ignore gpu blacklist
 app.commandLine.hasSwitch('enable-gpu');
@@ -176,6 +178,9 @@ const handlePermissionRequest = async (webContents, permission, callback, detail
         // deny: request came from a subframe of the main window, not the main frame
         return callback(false);
     }
+    if (permission === 'bluetooth') {
+        return callback(true);
+    }
     if (permission !== 'media') {
         // deny: request is for some other kind of access like notifications or pointerLock
         return callback(false);
@@ -218,12 +223,99 @@ const handlePermissionRequest = async (webContents, permission, callback, detail
     return callback(true);
 };
 
+const getBluetoothDeviceLabel = device =>
+    device.deviceName || device.deviceId || formatMessage({
+        id: 'index.bluetoothUnknownDevice',
+        default: 'Unknown Bluetooth device',
+        description: 'fallback label for an unnamed Bluetooth device'
+    });
+
+const isMicrobitBluetoothDevice = device => /micro:bit/i.test(getBluetoothDeviceLabel(device));
+
+const cancelPendingBluetoothSelection = () => {
+    if (!pendingBluetoothDeviceSelection) return;
+    if (pendingBluetoothDeviceSelection.timer) {
+        clearTimeout(pendingBluetoothDeviceSelection.timer);
+    }
+    pendingBluetoothDeviceSelection.callback('');
+    pendingBluetoothDeviceSelection = null;
+};
+
+const resolvePendingBluetoothSelection = async () => {
+    const selection = pendingBluetoothDeviceSelection;
+    pendingBluetoothDeviceSelection = null;
+    if (!selection) return;
+
+    const devices = selection.devices;
+    if (devices.length === 0) {
+        selection.callback('');
+        return;
+    }
+    if (devices.length === 1) {
+        selection.callback(devices[0].deviceId);
+        return;
+    }
+
+    const buttons = devices.map(getBluetoothDeviceLabel).concat(formatMessage({
+        id: 'index.bluetoothCancel',
+        default: 'Cancel',
+        description: 'button label for cancelling Bluetooth device selection'
+    }));
+    const result = await dialog.showMessageBox(_windows.main, {
+        type: 'question',
+        title: formatMessage({
+            id: 'index.bluetoothSelectTitle',
+            default: 'Select Bluetooth device',
+            description: 'title for Bluetooth device selection dialog'
+        }),
+        message: formatMessage({
+            id: 'index.bluetoothSelectMessage',
+            default: 'Select the micro:bit to connect.',
+            description: 'message for Bluetooth device selection dialog'
+        }),
+        buttons,
+        cancelId: buttons.length - 1
+    });
+    const selectedDevice = devices[result.response];
+    selection.callback(selectedDevice ? selectedDevice.deviceId : '');
+};
+
+const handleSelectBluetoothDevice = (event, deviceList, callback) => {
+    event.preventDefault();
+    const microbitDevice = deviceList.find(isMicrobitBluetoothDevice);
+    if (microbitDevice) {
+        cancelPendingBluetoothSelection();
+        callback(microbitDevice.deviceId);
+        return;
+    }
+
+    if (!pendingBluetoothDeviceSelection) {
+        pendingBluetoothDeviceSelection = {
+            callback,
+            devices: [],
+            timer: null
+        };
+    }
+    deviceList.forEach(device => {
+        const knownDevice = pendingBluetoothDeviceSelection.devices
+            .some(existingDevice => existingDevice.deviceId === device.deviceId);
+        if (!knownDevice) {
+            pendingBluetoothDeviceSelection.devices.push(device);
+        }
+    });
+    if (pendingBluetoothDeviceSelection.timer) {
+        clearTimeout(pendingBluetoothDeviceSelection.timer);
+    }
+    pendingBluetoothDeviceSelection.timer = setTimeout(resolvePendingBluetoothSelection, 1500);
+};
+
 const createWindow = ({search = null, url = 'index.html', ...browserWindowOptions}) => {
     const window = new BrowserWindow({
         useContentSize: true,
         show: false,
         webPreferences: {
             contextIsolation: false,
+            experimentalFeatures: true,
             nodeIntegration: true
         },
         ...browserWindowOptions
@@ -231,6 +323,7 @@ const createWindow = ({search = null, url = 'index.html', ...browserWindowOption
     const webContents = window.webContents;
 
     webContents.session.setPermissionRequestHandler(handlePermissionRequest);
+    webContents.on('select-bluetooth-device', handleSelectBluetoothDevice);
 
     webContents.on('before-input-event', (event, input) => {
         if (input.code === devToolKey.code &&
