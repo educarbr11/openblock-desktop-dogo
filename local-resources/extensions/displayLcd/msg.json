@@ -1,0 +1,7 @@
+{
+    "DISPLAYLCD_CATEGORY": "LCD 16x2",
+    "DISPLAYLCD_INIT_DEFAULT": "init LCD 16x2 default pins RS 8 E 9 D4 4 D5 5 D6 6 D7 7",
+    "DISPLAYLCD_INIT": "init LCD 16x2 RS %1 E %2 D4 %3 D5 %4 D6 %5 D7 %6",
+    "DISPLAYLCD_CLEAR": "clear LCD",
+    "DISPLAYLCD_PRINT_AT": "LCD write %1 at column %2 row %3"
+}

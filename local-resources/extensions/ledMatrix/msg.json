@@ -1,0 +1,14 @@
+{
+    "LEDMATRIX_CATEGORY": "LED Matrix",
+    "LEDMATRIX_INIT": "init LED matrix type %1 DIN %2 CS %3 CLK %4",
+    "LEDMATRIX_CLEAR": "clear LED matrix",
+    "LEDMATRIX_BRIGHTNESS": "set LED matrix brightness %1",
+    "LEDMATRIX_SET_PIXEL": "set LED matrix pixel x %1 y %2 %3",
+    "LEDMATRIX_SHOW_PATTERN_5X5": "show 5x5 matrix drawing %1",
+    "LEDMATRIX_SHOW_PATTERN_8X8": "show 8x8 matrix drawing %1",
+    "LEDMATRIX_SHOW_TEXT": "show LED matrix character %1",
+    "LEDMATRIX_TYPE_8X8": "8x8",
+    "LEDMATRIX_TYPE_5X5": "5x5",
+    "LEDMATRIX_STATE_ON": "on",
+    "LEDMATRIX_STATE_OFF": "off"
+}

@@ -5,6 +5,7 @@ const root = path.resolve(__dirname, '..');
 const dryRun = process.argv.includes('--dry-run');
 
 const allowedArduinoPackages = new Set(['arduino', 'builtin', 'esp32']);
+const allowedExternalExtensions = new Set(['displayLcd', 'ledMatrix']);
 const allowedArduinoFirmwares = new Set(['arduinoUno.hex']);
 const allowedMicroPythonFirmwares = new Set([
     'ESP32_GENERIC-20250415-v1.25.0.bin',
@@ -22,6 +23,19 @@ const removePath = target => {
     console.log(`removed ${relative}`);
 };
 
+const copyPath = (source, target) => {
+    if (!fs.existsSync(source)) return;
+    const relativeSource = path.relative(root, source);
+    const relativeTarget = path.relative(root, target);
+    if (dryRun) {
+        console.log(`[dry-run] copy ${relativeSource} -> ${relativeTarget}`);
+        return;
+    }
+    fs.rmSync(target, {recursive: true, force: true});
+    fs.cpSync(source, target, {recursive: true});
+    console.log(`copied ${relativeSource} -> ${relativeTarget}`);
+};
+
 const keepOnlyChildren = (dir, allowedNames) => {
     if (!fs.existsSync(dir)) return;
     for (const child of fs.readdirSync(dir)) {
@@ -31,13 +45,26 @@ const keepOnlyChildren = (dir, allowedNames) => {
     }
 };
 
+const copyLocalExternalExtensions = () => {
+    const sourceRoot = path.join(root, 'local-resources', 'extensions');
+    const targetRoot = path.join(root, 'external-resources', 'extensions');
+    if (!fs.existsSync(sourceRoot)) return;
+    if (!dryRun) {
+        fs.mkdirSync(targetRoot, {recursive: true});
+    }
+    for (const extensionId of allowedExternalExtensions) {
+        copyPath(path.join(sourceRoot, extensionId), path.join(targetRoot, extensionId));
+    }
+};
+
 const pruneArduinoTools = () => {
     const arduinoRoot = path.join(root, 'tools', 'Arduino');
     keepOnlyChildren(path.join(arduinoRoot, 'packages'), allowedArduinoPackages);
 };
 
 const pruneExternalResources = () => {
-    removePath(path.join(root, 'external-resources', 'extensions'));
+    copyLocalExternalExtensions();
+    keepOnlyChildren(path.join(root, 'external-resources', 'extensions'), allowedExternalExtensions);
 };
 
 const pruneFirmwares = () => {
