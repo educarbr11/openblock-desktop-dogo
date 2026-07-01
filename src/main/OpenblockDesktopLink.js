@@ -12,6 +12,9 @@ import log from '../common/log';
 import OpenBlockLink from 'openblock-link';
 import OpenblockResourceServer from 'openblock-resource';
 
+export const DESKTOP_LINK_PORT = 20113;
+export const DESKTOP_LINK_HOST = '127.0.0.1';
+
 class OpenblockDesktopLink extends EventEmitter {
     constructor () {
         super();
@@ -46,7 +49,8 @@ class OpenblockDesktopLink extends EventEmitter {
             this.emit('link-error', message);
         });
         this._link.on('port-in-use', () => {
-            const message = 'The local hardware server port 20111 is already used by another DoGoBlock Link instance.';
+            const message = `The local hardware server port ${DESKTOP_LINK_PORT} is already used by another ` +
+                'DoGoBlock Link instance.';
             log.warn(message);
             this.emit('link-warning', message);
         });
@@ -90,7 +94,7 @@ class OpenblockDesktopLink extends EventEmitter {
     }
 
     start () {
-        this._link.listen();
+        this._link.listen(DESKTOP_LINK_PORT, DESKTOP_LINK_HOST);
 
         // start resource server
         this._resourceServer.listen();

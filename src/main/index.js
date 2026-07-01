@@ -655,7 +655,7 @@ app.on('ready', () => {
                 }),
                 detail: `${message}\n\n${formatMessage({
                     id: 'index.openblockLinkPortErrorInstructions',
-                    default: 'Close other DoGoBlock/OpenBlock windows or stop the process using port 20111, ' +
+                    default: 'Close other DoGoBlock/OpenBlock windows or stop the process using port 20113, ' +
                         'then restart DoGoBlock.',
                     description: 'instructions for fixing local hardware server port conflict'
                 })}`
@@ -681,7 +681,7 @@ app.on('ready', () => {
                     }),
                     detail: `${pendingLinkError}\n\n${formatMessage({
                         id: 'index.openblockLinkPortErrorInstructions',
-                        default: 'Close other DoGoBlock/OpenBlock windows or stop the process using port 20111, ' +
+                        default: 'Close other DoGoBlock/OpenBlock windows or stop the process using port 20113, ' +
                             'then restart DoGoBlock.',
                         description: 'instructions for fixing local hardware server port conflict'
                     })}`
