@@ -7,6 +7,11 @@ const dryRun = process.argv.includes('--dry-run');
 const allowedArduinoPackages = new Set(['arduino', 'builtin', 'esp32']);
 const allowedExternalExtensions = new Set(['displayLcd', 'ledMatrix']);
 const allowedArduinoFirmwares = new Set(['arduinoUno.hex']);
+const allowedMicrobitFirmwares = new Set([
+    'dogoblock-microbit-realtime-v2.hex',
+    'dogoblock-microbit-ble.hex',
+    'dogoblock-microbit-ble-v2.hex'
+]);
 const allowedMicroPythonFirmwares = new Set([
     'ESP32_GENERIC-20250415-v1.25.0.bin',
     'esp32-20220618-v1.19.1.bin'
@@ -57,6 +62,25 @@ const copyLocalExternalExtensions = () => {
     }
 };
 
+const copyLocalMicrobitFirmwares = () => {
+    const sourceRoots = [
+        path.join(root, 'node_modules', 'openblock-link', 'firmwares', 'microbit'),
+        path.resolve(root, '..', 'openblock-link', 'firmwares', 'microbit')
+    ];
+    const targetRoot = path.join(root, 'firmwares', 'microbit');
+    if (!dryRun) {
+        fs.mkdirSync(targetRoot, {recursive: true});
+    }
+    for (const firmwareName of allowedMicrobitFirmwares) {
+        const source = sourceRoots
+            .map(sourceRoot => path.join(sourceRoot, firmwareName))
+            .find(candidate => fs.existsSync(candidate));
+        if (source) {
+            copyPath(source, path.join(targetRoot, firmwareName));
+        }
+    }
+};
+
 const pruneArduinoTools = () => {
     const arduinoRoot = path.join(root, 'tools', 'Arduino');
     keepOnlyChildren(path.join(arduinoRoot, 'packages'), allowedArduinoPackages);
@@ -68,7 +92,9 @@ const pruneExternalResources = () => {
 };
 
 const pruneFirmwares = () => {
+    copyLocalMicrobitFirmwares();
     keepOnlyChildren(path.join(root, 'firmwares', 'arduino'), allowedArduinoFirmwares);
+    keepOnlyChildren(path.join(root, 'firmwares', 'microbit'), allowedMicrobitFirmwares);
     keepOnlyChildren(path.join(root, 'firmwares', 'microPython'), allowedMicroPythonFirmwares);
 };
 
