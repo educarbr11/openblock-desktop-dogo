@@ -80,6 +80,13 @@ jobs:
           ref: dogo
           path: openblock-gui
 
+      - name: Checkout OpenBlock Link
+        uses: actions/checkout@v4
+        with:
+          repository: educarbr11/openblock-link-dogo
+          ref: main
+          path: openblock-link
+
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
@@ -104,6 +111,7 @@ jobs:
           NODE_OPTIONS: --max_old_space_size=4096
           OPENBLOCK_VM_PATH: ${{ github.workspace }}/openblock-vm
           OPENBLOCK_GUI_PATH: ${{ github.workspace }}/openblock-gui
+          OPENBLOCK_LINK_PATH: ${{ github.workspace }}/openblock-link
         run: npm run dist
 
       - name: Upload release assets
@@ -139,6 +147,13 @@ jobs:
           ref: dogo
           path: openblock-gui
 
+      - name: Checkout OpenBlock Link
+        uses: actions/checkout@v4
+        with:
+          repository: educarbr11/openblock-link-dogo
+          ref: main
+          path: openblock-link
+
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
@@ -173,6 +188,7 @@ jobs:
           USE_HARD_LINKS: false
           OPENBLOCK_VM_PATH: ${{ github.workspace }}/openblock-vm
           OPENBLOCK_GUI_PATH: ${{ github.workspace }}/openblock-gui
+          OPENBLOCK_LINK_PATH: ${{ github.workspace }}/openblock-link
         run: npm run dist
 
       - name: Upload release assets

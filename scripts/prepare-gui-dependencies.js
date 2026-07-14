@@ -35,7 +35,7 @@ if (patchSupportsExternalDependencies) {
         cwd: guiRoot,
         env: Object.assign({}, process.env, {
             OPENBLOCK_PATCH_DEPENDENCIES_ROOT: root,
-            OPENBLOCK_PATCH_TRANSLATIONS_ONLY: '1'
+            OPENBLOCK_PATCH_DEPENDENCIES_ONLY: '1'
         }),
         encoding: 'utf8',
         stdio: 'inherit'
@@ -109,5 +109,13 @@ generatedCodeHeaders.forEach(([file, header]) => {
         throw new Error(`Desktop generator branding is missing from ${file}: ${header}`);
     }
 });
+
+const arduinoGenerator = fs.readFileSync(
+    path.join(root, 'node_modules', 'openblock-blocks', 'arduino_compressed.js'),
+    'utf8'
+);
+if (!arduinoGenerator.includes('__dogoblockDigitalWriteSetupOnly')) {
+    throw new Error('Desktop Arduino generator does not configure digital output in setup().');
+}
 
 console.log('Desktop GUI dependencies, PT-BR translations and DoGo Block branding are ready.');
