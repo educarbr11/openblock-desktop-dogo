@@ -44,4 +44,14 @@ const uploaderSource = fs.readFileSync(arduinoUploader, 'utf8');
     }
 });
 
+const serialportSession = path.join(installedLink, 'src', 'session', 'serialport.js');
+if (!fs.existsSync(serialportSession) || !fs.readFileSync(serialportSession, 'utf8').includes(
+    "path.resolve(\n                this.toolsPath,\n                '..',\n                'firmwares'"
+)) {
+    throw new Error(
+        'Desktop openblock-link cannot resolve the packaged micro:bit firmware. ' +
+        'Set OPENBLOCK_LINK_PATH to the current repository.'
+    );
+}
+
 console.log('Desktop openblock-link runtime is ready.');

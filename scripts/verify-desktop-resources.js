@@ -7,13 +7,22 @@ const root = path.resolve(__dirname, '..');
 const arduinoRoot = path.join(root, 'tools', 'Arduino');
 const cli = path.join(arduinoRoot, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
 const avrRoot = path.join(arduinoRoot, 'packages', 'arduino', 'hardware', 'avr');
+const microbitRealtimeFirmware = path.join(
+    root,
+    'firmwares',
+    'microbit',
+    'dogoblock-microbit-realtime-v2.hex'
+);
 
 const fail = message => {
-    throw new Error(`Desktop Arduino resources are incomplete: ${message}`);
+    throw new Error(`Desktop resources are incomplete: ${message}`);
 };
 
 if (!fs.existsSync(cli)) fail(`missing ${path.relative(root, cli)}`);
 if (!fs.existsSync(avrRoot)) fail(`missing ${path.relative(root, avrRoot)}`);
+if (!fs.existsSync(microbitRealtimeFirmware) || fs.statSync(microbitRealtimeFirmware).size === 0) {
+    fail(`missing ${path.relative(root, microbitRealtimeFirmware)}`);
+}
 
 const avrVersions = fs.readdirSync(avrRoot).filter(version =>
     fs.existsSync(path.join(avrRoot, version, 'platform.txt')) &&
@@ -49,4 +58,6 @@ try {
     fs.rmSync(temporaryRoot, {recursive: true, force: true});
 }
 
-console.log(`Desktop Arduino tools verified with arduino:avr ${avrVersions.join(', ')}.`);
+console.log(
+    `Desktop resources verified with arduino:avr ${avrVersions.join(', ')} and micro:bit realtime firmware.`
+);
