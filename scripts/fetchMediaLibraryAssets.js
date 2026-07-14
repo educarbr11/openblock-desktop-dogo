@@ -7,7 +7,7 @@ const async = require('async');
 
 const libraries = require('./lib/libraries');
 
-const ASSET_HOST = 'dogoblockcdn.dogomaker.com';
+const ASSET_HOST = process.env.DOGOBLOCK_ASSET_HOST || 'https://dogoblockcdn.dogomaker.com';
 const NUM_SIMULTANEOUS_DOWNLOADS = 5;
 const OUT_PATH = path.resolve('static', 'assets');
 
@@ -59,40 +59,61 @@ const collectAssets = function (dest) {
 const connectionPool = [];
 
 const fetchAsset = function (md5, callback) {
+    const target = path.resolve(OUT_PATH, md5);
+    if (fs.existsSync(target) && fs.statSync(target).size > 0) {
+        callback();
+        return;
+    }
+
     const myAgent = connectionPool.pop() || new https.Agent({keepAlive: true});
-    const getOptions = {
-        host: ASSET_HOST,
-        path: `/internalapi/asset/${md5}/get/`,
-        agent: myAgent
+    const assetUrl = new URL(`/${md5}`, ASSET_HOST);
+    const temporaryTarget = `${target}.download`;
+    let completed = false;
+    const fail = error => {
+        if (completed) return;
+        completed = true;
+        fs.rmSync(temporaryTarget, {force: true});
+        myAgent.destroy();
+        callback(error);
     };
-    const urlHuman = `//${getOptions.host}${getOptions.path}`;
-    https.get(getOptions, response => {
+
+    https.get(assetUrl, {agent: myAgent}, response => {
         if (response.statusCode !== 200) {
-            callback(new Error(`Request failed: status code ${response.statusCode} for ${urlHuman}`));
+            response.resume();
+            fail(new Error(`Request failed: status code ${response.statusCode} for ${assetUrl}`));
             return;
         }
 
-        const stream = fs.createWriteStream(path.resolve(OUT_PATH, md5), {encoding: 'binary'});
-        stream.on('error', callback);
-        response.on('data', chunk => {
-            stream.write(chunk);
+        const stream = fs.createWriteStream(temporaryTarget, {encoding: 'binary'});
+        stream.on('error', fail);
+        response.on('error', fail);
+        stream.on('finish', () => {
+            stream.close(() => {
+                if (completed) return;
+                try {
+                    fs.renameSync(temporaryTarget, target);
+                    completed = true;
+                    connectionPool.push(myAgent);
+                    console.log(`Fetched ${assetUrl}`);
+                    callback();
+                } catch (error) {
+                    fail(error);
+                }
+            });
         });
-        response.on('end', () => {
-            connectionPool.push(myAgent);
-            stream.end();
-            console.log(`Fetched ${urlHuman}`);
-            callback();
-        });
-    });
+        response.pipe(stream);
+    }).on('error', fail);
 };
 
 const fetchAllAssets = function () {
+    fs.mkdirSync(OUT_PATH, {recursive: true});
     const allAssets = collectAssets(new Set());
     console.log(`Total library assets: ${allAssets.size}`);
 
     async.forEachLimit(allAssets, NUM_SIMULTANEOUS_DOWNLOADS, fetchAsset, err => {
         if (err) {
             console.error(`Fetch failed:\n${describe(err)}`);
+            process.exitCode = 1;
         } else {
             console.log('Fetch succeeded.');
         }
