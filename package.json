@@ -3,7 +3,7 @@
   "productName": "DoGoBlock",
   "description": "DoGoBlock as a self-contained desktop application",
   "author": "Openblock.cc Team <contact@openblock.cc> (http://www.openblock.cc/)",
-  "version": "2.6.20",
+  "version": "2.6.21",
   "license": "MIT",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",

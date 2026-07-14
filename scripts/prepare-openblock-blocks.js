@@ -4,6 +4,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const installedBlocks = path.join(root, 'node_modules', 'openblock-blocks');
 const installedBlocksRealPath = fs.existsSync(installedBlocks) ? fs.realpathSync(installedBlocks) : null;
+const bundledGenerators = path.join(root, 'scripts', 'vendor', 'openblock-blocks');
 const candidates = [
     process.env.OPENBLOCK_BLOCKS_PATH,
     path.join(root, 'openblock-blocks'),
@@ -12,8 +13,8 @@ const candidates = [
 
 const sourceBlocks = candidates.find(candidate =>
     fs.existsSync(path.join(candidate, 'package.json')) &&
-    fs.existsSync(path.join(candidate, 'arduino_compressed.js')) &&
-    fs.existsSync(path.join(candidate, 'python_compressed.js')) &&
+    fs.existsSync(path.join(candidate, 'generators', 'arduino.js')) &&
+    fs.existsSync(path.join(candidate, 'generators', 'python.js')) &&
     (!installedBlocksRealPath || fs.realpathSync(candidate) !== installedBlocksRealPath)
 );
 
@@ -26,53 +27,31 @@ if (!sourceBlocks) {
 
 fs.mkdirSync(installedBlocks, {recursive: true});
 
-const runtimeFiles = [
+const generatedFiles = [
     'arduino_compressed.js',
-    'blockly_compressed_horizontal.js',
-    'blockly_compressed_vertical.js',
-    'blockly_uncompressed_horizontal.js',
-    'blockly_uncompressed_vertical.js',
-    'blocks_compressed.js',
-    'blocks_compressed_horizontal.js',
-    'blocks_compressed_vertical.js',
     'python_compressed.js'
 ];
-const runtimeDirectories = [
-    'blocks_common',
-    'blocks_horizontal',
-    'blocks_vertical',
-    'core',
-    'dist',
-    'generators',
-    'i18n',
-    'media',
-    'msg',
-    'shim'
-];
 
-runtimeFiles.forEach(file => {
-    fs.copyFileSync(path.join(sourceBlocks, file), path.join(installedBlocks, file));
-});
-
-runtimeDirectories.forEach(directory => {
-    const source = path.join(sourceBlocks, directory);
-    const target = path.join(installedBlocks, directory);
-    fs.rmSync(target, {recursive: true, force: true});
-    fs.cpSync(source, target, {recursive: true});
+generatedFiles.forEach(file => {
+    const bundledFile = path.join(bundledGenerators, file);
+    if (!fs.existsSync(bundledFile)) {
+        throw new Error(`Desktop is missing the bundled openblock-blocks generator: ${file}.`);
+    }
+    fs.copyFileSync(bundledFile, path.join(installedBlocks, file));
 });
 
 const requiredGeneratorMarkers = [
-    ['python_compressed.js', 'microbit_display_showImage'],
     ['generators/python/microbit.js', "Blockly.Python['microbit_sensor_soundLevel']"],
     ['generators/python/microbit.js', "Blockly.Python['microbit_whenLogo']"],
-    ['arduino_compressed.js', 'arduino_pin_setDigitalOutput']
+    ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_pin_setDigitalOutput']"]
 ];
 
 requiredGeneratorMarkers.forEach(([file, marker]) => {
-    const target = path.join(installedBlocks, file);
-    if (!fs.readFileSync(target, 'utf8').includes(marker)) {
-        throw new Error(`Desktop openblock-blocks is missing ${marker} in ${file}.`);
+    const source = path.join(sourceBlocks, file);
+    if (!fs.readFileSync(source, 'utf8').includes(marker)) {
+        throw new Error(`Checked out openblock-blocks is missing ${marker} in ${file}.`);
     }
 });
 
-console.log(`Synchronized openblock-blocks runtime from ${sourceBlocks}.`);
+console.log(`Validated openblock-blocks sources from ${sourceBlocks}.`);
+console.log(`Installed deterministic generator bundles from ${bundledGenerators}.`);
