@@ -11,7 +11,7 @@
     "i18n:src": "mkdirp translations/core && format-message extract --out-file translations/core/en.json src/main/**.js",
     "i18n:push": "tx-push-src openblock-editor desktop translations/core/en.json",
     "start": "mkdirp ./dist && cross-env NODE_OPTIONS=--max-old-space-size=8192 electron-webpack dev --bail --display-error-details --env.minify=false --no-progress",
-    "compile": "mkdirp ./dist && cross-env NODE_OPTIONS=--max-old-space-size=8192 electron-webpack --bail --display-error-details --env.minify=false --no-progress",
+    "compile": "node scripts/prepare-gui-dependencies.js && mkdirp ./dist && cross-env NODE_OPTIONS=--max-old-space-size=8192 electron-webpack --bail --display-error-details --env.minify=false --no-progress",
     "fetch:drivers": "rimraf ./drivers && node scripts/download-driver.js",
     "fetch:exts": "rimraf ./external-resources && node ./node_modules/openblock-resource/script/download.js  --repo=openblockcc/external-resources-v3",
     "fetch:firmwares": "rimraf ./firmwares && node ./node_modules/openblock-link/script/download-firmwares.js",
