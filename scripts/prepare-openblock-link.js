@@ -16,6 +16,35 @@ const sourceLink = candidates.find(candidate =>
     (!installedLinkRealPath || fs.realpathSync(candidate) !== installedLinkRealPath)
 );
 
+const prepareUsbNativeBuild = () => {
+    let usbPackage;
+    try {
+        usbPackage = require.resolve('usb/package.json', {paths: [installedLink]});
+    } catch (error) {
+        throw new Error('Could not resolve the USB native dependency used by openblock-link.');
+    }
+
+    const bindingFile = path.join(path.dirname(usbPackage), 'binding.gyp');
+    if (!fs.existsSync(bindingFile)) {
+        throw new Error(`USB native dependency is missing binding.gyp: ${bindingFile}`);
+    }
+
+    const currentBinding = fs.readFileSync(bindingFile, 'utf8');
+    const preparedBinding = currentBinding
+        .replace(/-std=c\+\+14/g, '-std=c++17')
+        .replace(/-std=c\+\+1y/g, '-std=c++17');
+
+    if (!preparedBinding.includes('-std=c++17')) {
+        throw new Error(`USB native dependency does not define a supported C++ standard: ${bindingFile}`);
+    }
+    if (preparedBinding === currentBinding) {
+        console.log(`USB native build already uses C++17: ${bindingFile}`);
+    } else {
+        fs.writeFileSync(bindingFile, preparedBinding);
+        console.log(`Updated USB native build to C++17: ${bindingFile}`);
+    }
+};
+
 if (sourceLink) {
     ['src', 'script', 'firmwares'].forEach(directory => {
         const source = path.join(sourceLink, directory);
@@ -26,6 +55,8 @@ if (sourceLink) {
     });
     console.log(`Synchronized openblock-link runtime from ${sourceLink}.`);
 }
+
+prepareUsbNativeBuild();
 
 const arduinoUploader = path.join(installedLink, 'src', 'upload', 'arduino.js');
 if (!fs.existsSync(arduinoUploader)) {
