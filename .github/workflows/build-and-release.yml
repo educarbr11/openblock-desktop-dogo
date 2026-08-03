@@ -70,14 +70,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: educarbr11/openblock-vm
-          ref: a5ca9807a2dc674cfe20ecac33da3909ce98bd4f
+          ref: 0e518c4ed2016369c60d4def169d419692cb0eab
           path: openblock-vm
 
       - name: Checkout OpenBlock GUI
         uses: actions/checkout@v4
         with:
           repository: educarbr11/openblock-gui-dogo
-          ref: f51d9e75e5482ef287d935932f6a365c1235f3d1
+          ref: 9af532748bde090d54ed92b15b008f8783c248e4
           path: openblock-gui
 
       - name: Checkout OpenBlock Link
@@ -158,14 +158,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: educarbr11/openblock-vm
-          ref: a5ca9807a2dc674cfe20ecac33da3909ce98bd4f
+          ref: 0e518c4ed2016369c60d4def169d419692cb0eab
           path: openblock-vm
 
       - name: Checkout OpenBlock GUI
         uses: actions/checkout@v4
         with:
           repository: educarbr11/openblock-gui-dogo
-          ref: f51d9e75e5482ef287d935932f6a365c1235f3d1
+          ref: 9af532748bde090d54ed92b15b008f8783c248e4
           path: openblock-gui
 
       - name: Checkout OpenBlock Link
