@@ -9,6 +9,8 @@ import parseReleaseMessage from 'openblock-parse-release-message';
 import {UPDATE_TARGET, UPDATE_MODAL_STATE} from 'openblock-gui/src/lib/update-state.js';
 import {AbortController} from 'node-abort-controller';
 
+const RELEASES_URL = 'https://github.com/educarbr11/openblock-desktop-dogo/releases/latest';
+
 class OpenblockDesktopUpdater {
     constructor (webContents, resourceServer) {
         this._webContents = webContents;
@@ -37,6 +39,12 @@ class OpenblockDesktopUpdater {
 
     reportUpdateState (state) {
         this._webContents.send('setUpdate', state);
+    }
+
+    canAutoUpdateApplication () {
+        // electron-updater installs AppImage on Linux. Packages installed from
+        // .deb must be updated manually from the release page.
+        return process.platform !== 'linux' || Boolean(process.env.APPIMAGE);
     }
 
     applicationAvailable (info) {
@@ -89,7 +97,9 @@ class OpenblockDesktopUpdater {
             resourceServerCheckUpdate();
         });
 
-        if ((app.getLocaleCountryCode() === 'CN') || (process.platform === 'darwin')) {
+        if (!this.canAutoUpdateApplication() ||
+            (app.getLocaleCountryCode() === 'CN') ||
+            (process.platform === 'darwin')) {
             // Due to widespread network issues in China, and the large size of the macOS installer,
             // we skip checking for application updates and only check for resource updates.
             resourceServerCheckUpdate();
@@ -99,6 +109,10 @@ class OpenblockDesktopUpdater {
     }
 
     reqeustCheckUpdate (_windows) {
+        if (!this.canAutoUpdateApplication()) {
+            shell.openExternal(RELEASES_URL);
+            return;
+        }
         autoUpdater.on('error', err => {
             this.removeAllAutoUpdaterListeners();
             if (err.message === 'net::ERR_INTERNET_DISCONNECTED') {
@@ -194,7 +208,7 @@ class OpenblockDesktopUpdater {
         });
 
         const openDownloadPage = () => {
-            shell.openExternal('https://wiki.openblock.cc/install-desktop-version');
+            shell.openExternal(RELEASES_URL);
         };
 
         if (process.platform === 'darwin') {

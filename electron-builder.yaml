@@ -7,6 +7,8 @@ appId: openblock.cc.openblock-desktop
 productName: "DoGoBlock"
 publish:
   - provider: github
+    owner: educarbr11
+    repo: openblock-desktop-dogo
 artifactName: "DoGoBlock_v${version}_${os}_${arch}.${ext}"
 
 fileAssociations:
@@ -72,6 +74,7 @@ linux:
       Type: Application
       Terminal: false
   target:
+    - AppImage
     - deb
 deb:
   depends: ["libnotify4", "libxtst6", "libnss3"]

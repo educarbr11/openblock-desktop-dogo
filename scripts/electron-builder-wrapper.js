@@ -54,7 +54,8 @@ const runBuilder = function (wrapperConfig, target) {
         // throw new Error(`Signing NSIS build requires CSC_LINK or WIN_CSC_LINK`);
     }
     const platformFlag = getPlatformFlag();
-    let allArgs = [platformFlag, target.name];
+    const targetNames = Array.isArray(target.name) ? target.name : [target.name];
+    let allArgs = [platformFlag].concat(targetNames);
     if (target.platform === 'darwin') {
         allArgs.push(`--c.mac.type=${wrapperConfig.mode === 'dist' ? 'distribution' : 'development'}`);
         if (target.name === 'mas-dev') {
@@ -127,7 +128,7 @@ const calculateTargets = function (wrapperConfig) {
             platform: 'win32'
         },
         linuxDirectDownload: {
-            name: 'deb',
+            name: ['AppImage', 'deb'],
             platform: 'linux'
         }
     };

@@ -131,6 +131,10 @@ jobs:
           OPENBLOCK_BLOCKS_PATH: ${{ github.workspace }}/openblock-blocks
         run: npm run dist
 
+      - name: Verify update metadata
+        shell: bash
+        run: npm run verify:update -- --packaged
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
@@ -216,6 +220,9 @@ jobs:
           OPENBLOCK_BLOCKS_PATH: ${{ github.workspace }}/openblock-blocks
         run: npm run dist
 
+      - name: Verify update metadata
+        run: npm run verify:update -- --packaged
+
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
@@ -223,7 +230,20 @@ jobs:
           draft: true
           fail_on_unmatched_files: true
           files: |
+            dist/DoGoBlock*.AppImage
             dist/DoGoBlock*.deb
             dist/latest*.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-release:
+    needs:
+      - create-release
+      - build-windows
+      - build-linux
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish completed release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false --prerelease=false

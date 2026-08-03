@@ -31,11 +31,12 @@
     "dist": "npm run clean && npm run compile && npm run fetch:all && npm run doBuild -- --mode=dist",
     "publish": "npm run clean && npm run compile && npm run fetch:all && npm run doBuild -- --mode=publish",
     "test": "npm run test:lint",
-    "test:lint": "eslint --cache --color --ext .jsx,.js src scripts"
+    "test:lint": "eslint --cache --color --ext .jsx,.js src scripts",
+    "verify:update": "node scripts/verify-update-config.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/educarbr11/openblock-gui-dogo.git"
+    "url": "git+https://github.com/educarbr11/openblock-desktop-dogo.git"
   },
   "dependencies": {
     "bytes": "^3.1.2",
