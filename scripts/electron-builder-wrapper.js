@@ -127,8 +127,12 @@ const calculateTargets = function (wrapperConfig) {
             name: 'nsis',
             platform: 'win32'
         },
-        linuxDirectDownload: {
-            name: ['AppImage', 'deb'],
+        linuxDeb: {
+            name: 'deb',
+            platform: 'linux'
+        },
+        linuxAppImage: {
+            name: 'AppImage',
             platform: 'linux'
         }
     };
@@ -159,7 +163,11 @@ const calculateTargets = function (wrapperConfig) {
         targets.push(availableTargets.macDirectDownload);
         break;
     case 'linux':
-        targets.push(availableTargets.linuxDirectDownload);
+        // Build in separate processes to release compression memory between
+        // targets. AppImage runs last so latest-linux.yml remains suitable for
+        // electron-updater.
+        targets.push(availableTargets.linuxDeb);
+        targets.push(availableTargets.linuxAppImage);
         break;
     default:
         throw new Error(`Could not determine targets for platform: ${process.platform}`);
