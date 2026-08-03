@@ -13,6 +13,9 @@ on:
 permissions:
   contents: write
 
+env:
+  NODE_VERSION: '22.23.0'
+
 jobs:
   create-release:
     runs-on: ubuntu-24.04
@@ -97,7 +100,8 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '16.x'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
       - name: Use Python 3.11 for native modules
         uses: actions/setup-python@v5
@@ -106,21 +110,21 @@ jobs:
 
       - name: Configure node-gyp
         shell: pwsh
-        run: npm config set python "$env:pythonLocation\python.exe"
-
-      - name: Use Bash for npm scripts
-        shell: bash
         run: |
-          npm config set script-shell "C:/Program Files/Git/bin/bash.exe"
-          npm config get script-shell
+          npm install --global node-gyp@10.3.1
+          $nodeGyp = Join-Path (npm root -g) 'node-gyp/bin/node-gyp.js'
+          "npm_config_node_gyp=$nodeGyp" >> $env:GITHUB_ENV
+          "GYP_MSVS_VERSION=2022" >> $env:GITHUB_ENV
+          "npm_config_msvs_version=2022" >> $env:GITHUB_ENV
+          "npm_config_python=$env:pythonLocation\python.exe" >> $env:GITHUB_ENV
 
       - name: Npm Install
-        shell: bash
+        shell: pwsh
         run: |
           npm ci
 
       - name: Build Dist
-        shell: bash
+        shell: pwsh
         env:
           GA_ID: ${{ secrets.GA_ID }}
           NODE_ENV: production
@@ -185,7 +189,8 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '16.x'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
       - name: Npm Install
         run: npm ci
