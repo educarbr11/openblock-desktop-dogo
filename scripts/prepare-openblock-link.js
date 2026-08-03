@@ -17,11 +17,21 @@ const sourceLink = candidates.find(candidate =>
 );
 
 const prepareUsbNativeBuild = () => {
-    let usbPackage;
-    try {
-        usbPackage = require.resolve('usb/package.json', {paths: [installedLink]});
-    } catch (error) {
-        throw new Error('Could not resolve the USB native dependency used by openblock-link.');
+    const resolutionPaths = [installedLink, root];
+    let usbPackage = null;
+
+    for (const resolutionPath of resolutionPaths) {
+        try {
+            usbPackage = require.resolve('usb/package.json', {paths: [resolutionPath]});
+            break;
+        } catch (error) {
+            if (error.code !== 'MODULE_NOT_FOUND') throw error;
+        }
+    }
+
+    if (!usbPackage) {
+        console.log('Optional USB native dependency is not installed; skipping its C++17 build preparation.');
+        return;
     }
 
     const bindingFile = path.join(path.dirname(usbPackage), 'binding.gyp');
