@@ -3,10 +3,10 @@
   "productName": "DoGoBlock",
   "description": "DoGoBlock as a self-contained desktop application",
   "author": "Openblock.cc Team <contact@openblock.cc> (http://www.openblock.cc/)",
-  "version": "2.6.27",
+  "version": "2.6.28",
   "license": "MIT",
   "scripts": {
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "node scripts/prepare-usb-native-build.js && electron-builder install-app-deps",
     "clean": "rimraf ./dist ./static ./external-resources ./tools ./translations ./firmwares ./drivers",
     "i18n:src": "mkdirp translations/core && format-message extract --out-file translations/core/en.json src/main/**.js",
     "i18n:push": "tx-push-src openblock-editor desktop translations/core/en.json",
