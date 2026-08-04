@@ -192,6 +192,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make g++ libudev-dev libusb-1.0-0-dev rpm
+
       - name: Npm Install
         run: npm ci
 
