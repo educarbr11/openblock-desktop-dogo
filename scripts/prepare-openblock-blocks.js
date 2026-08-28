@@ -43,7 +43,8 @@ generatedFiles.forEach(file => {
 const requiredGeneratorMarkers = [
     ['generators/python/microbit.js', "Blockly.Python['microbit_sensor_soundLevel']"],
     ['generators/python/microbit.js', "Blockly.Python['microbit_whenLogo']"],
-    ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_pin_setDigitalOutput']"]
+    ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_pin_setDigitalOutput']"],
+    ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_serial_serialReadData']"]
 ];
 
 requiredGeneratorMarkers.forEach(([file, marker]) => {
