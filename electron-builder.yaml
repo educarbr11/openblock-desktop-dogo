@@ -1,7 +1,13 @@
 directories:
   buildResources: buildResources
   output: dist
-extraFiles: ['LICENSE', 'LICENSE.ScratchFoundation', 'TRADEMARK', "tools", "external-resources", 'firmwares', "drivers"]
+afterPack: scripts/after-pack-verify.js
+extraFiles: ['LICENSE', 'LICENSE.ScratchFoundation', 'TRADEMARK', "tools", "external-resources", 'firmwares', "drivers", "resource-packs"]
+
+files:
+  - "**/*"
+  - "!node_modules/openblock-link/tools{,/**/*}"
+  - "!node_modules/openblock-link/firmwares{,/**/*}"
 
 appId: openblock.cc.openblock-desktop
 productName: "DoGoBlock"

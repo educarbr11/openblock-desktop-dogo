@@ -32,7 +32,11 @@
     "publish": "npm run clean && npm run compile && npm run fetch:all && npm run doBuild -- --mode=publish",
     "test": "npm run test:lint",
     "test:lint": "eslint --cache --color --ext .jsx,.js src scripts",
-    "verify:update": "node scripts/verify-update-config.js"
+    "test:resource-packs": "node scripts/test-resource-pack-manager.js",
+    "verify:update": "node scripts/verify-update-config.js",
+    "resource-pack:esp32": "node scripts/build-esp32-resource-pack.js",
+    "resource-pack:merge": "node scripts/merge-esp32-resource-pack-manifests.js",
+    "resource-pack:verify": "node scripts/verify-esp32-resource-pack-manifest.js"
   },
   "repository": {
     "type": "git",
@@ -42,7 +46,8 @@
     "bytes": "^3.1.2",
     "openblock-link": "git+https://github.com/educarbr11/openblock-link-dogo.git#1ef8e05bf9af199b0e9d73e78369b7d306047bef",
     "openblock-resource": "^0.2.0-prerelease.20250302101433",
-    "source-map-support": "^0.5.19"
+    "source-map-support": "^0.5.19",
+    "tar": "^6.2.1"
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.53.1",

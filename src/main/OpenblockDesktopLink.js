@@ -11,6 +11,7 @@ import log from '../common/log';
 
 import OpenBlockLink from 'openblock-link';
 import OpenblockResourceServer from 'openblock-resource';
+import ResourcePackManager from './ResourcePackManager';
 
 export const DESKTOP_LINK_PORT = 20113;
 export const DESKTOP_LINK_HOST = '127.0.0.1';
@@ -37,13 +38,19 @@ class OpenblockDesktopLink extends EventEmitter {
             'userData'
         );
         this.dataPath = path.join(userDataPath, 'Data');
+        this._resourcePackManager = new ResourcePackManager({
+            dataPath: this.dataPath,
+            manifestPath: path.join(this.appPath, 'resource-packs', 'esp32.json')
+        });
 
         const cacheResourcesPath = path.join(this.dataPath, 'external-resources');
         if (!fs.existsSync(cacheResourcesPath)) {
             fs.mkdirSync(cacheResourcesPath, {recursive: true});
         }
 
-        this._link = new OpenBlockLink(this.dataPath, path.join(this.appPath, 'tools'));
+        this._link = new OpenBlockLink(this.dataPath, path.join(this.appPath, 'tools'), {
+            toolsProvider: this._resourcePackManager
+        });
         this._link.on('error', message => {
             log.error(message);
             this.emit('link-error', message);
@@ -61,6 +68,10 @@ class OpenblockDesktopLink extends EventEmitter {
 
     get resourceServer () {
         return this._resourceServer;
+    }
+
+    get resourcePackManager () {
+        return this._resourcePackManager;
     }
 
     installDriver (callback = null) {

@@ -1,0 +1,114 @@
+name: Build ESP32 resource pack
+
+on:
+  push:
+    branches:
+      - dogo-dev
+    paths:
+      - '.github/workflows/build-esp32-resource-pack.yml'
+      - 'scripts/build-esp32-resource-pack.js'
+      - 'scripts/merge-esp32-resource-pack-manifests.js'
+      - 'scripts/verify-esp32-resource-pack-manifest.js'
+      - 'resource-packs/esp32.json'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Resource pack version
+        required: true
+        default: 1.0.0
+        type: string
+      publish:
+        description: Publish the GitHub Release
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: '22.23.0'
+  PACK_VERSION: ${{ inputs.version || '1.0.0' }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            variant: linux-x64
+          - os: windows-2022
+            variant: win32-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Download Arduino tools
+        run: npm run fetch:tools
+
+      - name: Build and validate pack
+        run: node scripts/build-esp32-resource-pack.js --version=${{ env.PACK_VERSION }}
+
+      - name: Upload pack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32-pack-${{ matrix.variant }}
+          path: |
+            dist/resource-packs/dogoblock-esp32-pack-v${{ env.PACK_VERSION }}-${{ matrix.variant }}.tar.gz
+            dist/resource-packs/dogoblock-esp32-pack-v${{ env.PACK_VERSION }}-${{ matrix.variant }}.tar.gz.sha256
+            dist/resource-packs/esp32-${{ matrix.variant }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Download pack artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: esp32-pack-*
+          path: dist/resource-packs
+          merge-multiple: true
+
+      - name: Merge and verify manifest
+        run: |
+          npm run resource-pack:merge -- dist/resource-packs dist/resource-packs/esp32.json
+          cp dist/resource-packs/esp32.json resource-packs/esp32.json
+          npm run resource-pack:verify
+          cat dist/resource-packs/*.sha256 > dist/resource-packs/SHA256SUMS
+
+      - name: Publish resource pack release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="esp32-pack-v${{ env.PACK_VERSION }}"
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "DoGoBlock ESP32 Pack v${{ env.PACK_VERSION }}" \
+              --notes "Optional offline toolchain for ESP32 and ESP32-S3 (Arduino Core ESP32 3.1.3)."
+          gh release upload "$TAG" --clobber \
+            dist/resource-packs/*.tar.gz \
+            dist/resource-packs/SHA256SUMS \
+            dist/resource-packs/esp32.json

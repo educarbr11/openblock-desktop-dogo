@@ -48,11 +48,18 @@ const uploaderSource = fs.readFileSync(arduinoUploader, 'utf8');
 });
 
 const serialportSession = path.join(installedLink, 'src', 'session', 'serialport.js');
-if (!fs.existsSync(serialportSession) || !fs.readFileSync(serialportSession, 'utf8').includes(
+const serialportSource = fs.existsSync(serialportSession) ? fs.readFileSync(serialportSession, 'utf8') : '';
+if (!serialportSource.includes(
     "path.resolve(\n                this.toolsPath,\n                '..',\n                'firmwares'"
 )) {
     throw new Error(
         'Desktop openblock-link cannot resolve the packaged micro:bit firmware. ' +
+        'Set OPENBLOCK_LINK_PATH to the current repository.'
+    );
+}
+if (!serialportSource.includes('_acquireTools (config)') || !serialportSource.includes('toolsLease.release()')) {
+    throw new Error(
+        'Desktop openblock-link does not support optional tool providers. ' +
         'Set OPENBLOCK_LINK_PATH to the current repository.'
     );
 }

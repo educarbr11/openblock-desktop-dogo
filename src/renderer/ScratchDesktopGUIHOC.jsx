@@ -7,6 +7,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import {connect} from 'react-redux';
 import GUIComponent from 'openblock-gui/src/components/gui/gui.jsx';
+import ResourcePackModal from 'openblock-gui/src/components/resource-pack-modal/resource-pack-modal.jsx';
 import {FormattedMessage} from 'react-intl';
 
 import {
@@ -45,12 +46,23 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
         constructor (props) {
             super(props);
             bindAll(this, [
+                'handleCancelResourcePack',
+                'handleEnsureResourcePack',
+                'handleGetResourcePackStatus',
+                'handleInstallResourcePack',
                 'handleProjectTelemetryEvent',
+                'handleRemoveResourcePack',
+                'handleResourcePackProgress',
                 'handleSetTitleFromSave',
                 'handleShowMessageBox',
                 'handleStorageInit',
+                'handleUseInstalledResourcePack',
                 'handleUpdateProjectTitle'
             ]);
+            this.state = {
+                resourcePackStatus: null
+            };
+            this.pendingResourcePack = null;
             this.props.onLoadingStarted();
             ipcRenderer.invoke('get-initial-project-data').then(async initialProjectData => {
                 const hasInitialProject = initialProjectData && (initialProjectData.length > 0);
@@ -111,9 +123,15 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             ipcRenderer.on('setPlatform', (event, args) => {
                 this.platform = args;
             });
+            ipcRenderer.on('resource-pack:progress', this.handleResourcePackProgress);
         }
         componentWillUnmount () {
             ipcRenderer.removeListener('setTitleFromSave', this.handleSetTitleFromSave);
+            ipcRenderer.removeListener('resource-pack:progress', this.handleResourcePackProgress);
+            if (this.pendingResourcePack) {
+                this.pendingResourcePack.reject(new Error('Resource pack request was interrupted.'));
+                this.pendingResourcePack = null;
+            }
         }
         handleClickAbout () {
             ipcRenderer.send('open-about-window');
@@ -138,6 +156,114 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
         }
         handleProjectTelemetryEvent (event, metadata) {
             ipcRenderer.send(event, metadata);
+        }
+        handleGetResourcePackStatus (packId) {
+            return ipcRenderer.invoke('resource-pack:get-status', packId);
+        }
+        handleEnsureResourcePack (packId) {
+            if (this.pendingResourcePack && this.pendingResourcePack.packId === packId) {
+                return this.pendingResourcePack.promise;
+            }
+            return this.handleGetResourcePackStatus(packId).then(status => {
+                if (status.phase === 'ready' && status.canUse) return status;
+
+                let resolveRequest;
+                let rejectRequest;
+                const promise = new Promise((resolve, reject) => {
+                    resolveRequest = resolve;
+                    rejectRequest = reject;
+                });
+                this.pendingResourcePack = {
+                    packId,
+                    promise,
+                    resolve: resolveRequest,
+                    reject: rejectRequest
+                };
+                this.setState({resourcePackStatus: status});
+                return promise;
+            });
+        }
+        handleInstallResourcePack () {
+            if (!this.pendingResourcePack) return;
+            const packId = this.pendingResourcePack.packId;
+            this.setState({
+                resourcePackStatus: Object.assign({}, this.state.resourcePackStatus, {
+                    phase: 'downloading',
+                    progress: 0
+                })
+            });
+            ipcRenderer.invoke('resource-pack:install', packId).then(status => {
+                if (!this.pendingResourcePack || this.pendingResourcePack.packId !== packId) return;
+                const pending = this.pendingResourcePack;
+                this.pendingResourcePack = null;
+                this.setState({resourcePackStatus: null});
+                pending.resolve(status);
+            })
+                .catch(error => {
+                    if (!this.pendingResourcePack || this.pendingResourcePack.packId !== packId) return;
+                    this.setState({
+                        resourcePackStatus: Object.assign({}, this.state.resourcePackStatus, {
+                            phase: 'error',
+                            progress: 0,
+                            message: error.message
+                        })
+                    });
+                });
+        }
+        handleCancelResourcePack () {
+            if (!this.pendingResourcePack) return;
+            const pending = this.pendingResourcePack;
+            const status = this.state.resourcePackStatus || {};
+            this.pendingResourcePack = null;
+            this.setState({resourcePackStatus: null});
+            if (['downloading', 'extracting', 'validating'].indexOf(status.phase) !== -1) {
+                ipcRenderer.invoke('resource-pack:cancel', pending.packId).catch(() => {});
+            }
+            pending.reject(new Error('Resource pack installation was cancelled.'));
+        }
+        handleUseInstalledResourcePack () {
+            if (!this.pendingResourcePack || !this.state.resourcePackStatus ||
+                !this.state.resourcePackStatus.canUse) return;
+            const pending = this.pendingResourcePack;
+            const status = this.state.resourcePackStatus;
+            this.pendingResourcePack = null;
+            this.setState({resourcePackStatus: null});
+            pending.resolve(status);
+        }
+        handleResourcePackProgress (event, status) {
+            if (!this.pendingResourcePack || status.id !== this.pendingResourcePack.packId) return;
+            this.setState({resourcePackStatus: status});
+        }
+        handleRemoveResourcePack (packId) {
+            const isPortuguese = this.props.locale.indexOf('pt') === 0;
+            const copy = isPortuguese ? {
+                remove: 'Remover',
+                cancel: 'Cancelar',
+                title: 'Remover suporte ESP32',
+                message: 'Remover o suporte ESP32 deste computador?',
+                detail: 'Seus projetos e blocos não serão apagados. Para usar ESP32 novamente, será necessário ' +
+                    'baixar o pacote.'
+            } : {
+                remove: 'Remove',
+                cancel: 'Cancel',
+                title: 'Remove ESP32 support',
+                message: 'Remove ESP32 support from this computer?',
+                detail: 'Your projects and blocks will not be deleted. To use ESP32 again, download the package.'
+            };
+            return dialog.showMessageBox(remote.getCurrentWindow(), {
+                type: 'warning',
+                buttons: [copy.remove, copy.cancel],
+                defaultId: 1,
+                cancelId: 1,
+                title: copy.title,
+                message: copy.message,
+                detail: copy.detail
+            }).then(result => {
+                if (result.response !== 0) {
+                    return Promise.reject(new Error('Resource pack removal was cancelled.'));
+                }
+                return ipcRenderer.invoke('resource-pack:remove', packId);
+            });
         }
         handleSetTitleFromSave (event, args) {
             this.handleUpdateProjectTitle(args.title);
@@ -181,61 +307,76 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
         render () {
             const childProps = omit(this.props, Object.keys(ScratchDesktopGUIComponent.propTypes));
 
-            return (<WrappedComponent
-                canChangeLanguage
-                canEditTitle
-                canModifyCloudData={false}
-                canSave={false}
-                isScratchDesktop
-                onClickAbout={[
-                    {
-                        title: (<FormattedMessage
-                            defaultMessage="About"
-                            description="Menu bar item for about"
-                            id="gui.desktopMenuBar.about"
-                        />),
-                        onClick: () => this.handleClickAbout()
-                    },
-                    {
-                        title: (<FormattedMessage
-                            defaultMessage="License"
-                            description="Menu bar item for license"
-                            id="gui.desktopMenuBar.license"
-                        />),
-                        onClick: () => this.handleClickLicense()
-                    },
-                    {
-                        title: (<FormattedMessage
-                            defaultMessage="Privacy policy"
-                            description="Menu bar item for privacy policy"
-                            id="gui.menuBar.privacyPolicy"
-                        />),
-                        onClick: () => showPrivacyPolicy()
-                    },
-                    {
-                        title: (<FormattedMessage
-                            defaultMessage="Data settings"
-                            description="Menu bar item for data settings"
-                            id="gui.menuBar.dataSettings"
-                        />),
-                        onClick: () => this.props.onTelemetrySettingsClicked()
-                    }
-                ]}
-                onClickLogo={this.handleClickLogo}
-                onClickCheckUpdate={this.handleClickCheckUpdate}
-                onClickUpdate={this.handleClickUpdate}
-                onAbortUpdate={this.handleAbortUpdate}
-                onClickInstallDriver={this.handleClickInstallDriver}
-                onClickClearCache={this.handleClickClearCache}
-                onProjectTelemetryEvent={this.handleProjectTelemetryEvent}
-                onShowMessageBox={this.handleShowMessageBox}
-                onShowPrivacyPolicy={showPrivacyPolicy}
-                onStorageInit={this.handleStorageInit}
-                onUpdateProjectTitle={this.handleUpdateProjectTitle}
+            return (
+                <React.Fragment>
+                    <WrappedComponent
+                        canChangeLanguage
+                        canEditTitle
+                        canModifyCloudData={false}
+                        canSave={false}
+                        isScratchDesktop
+                        onClickAbout={[
+                            {
+                                title: (<FormattedMessage
+                                    defaultMessage="About"
+                                    description="Menu bar item for about"
+                                    id="gui.desktopMenuBar.about"
+                                />),
+                                onClick: () => this.handleClickAbout()
+                            },
+                            {
+                                title: (<FormattedMessage
+                                    defaultMessage="License"
+                                    description="Menu bar item for license"
+                                    id="gui.desktopMenuBar.license"
+                                />),
+                                onClick: () => this.handleClickLicense()
+                            },
+                            {
+                                title: (<FormattedMessage
+                                    defaultMessage="Privacy policy"
+                                    description="Menu bar item for privacy policy"
+                                    id="gui.menuBar.privacyPolicy"
+                                />),
+                                onClick: () => showPrivacyPolicy()
+                            },
+                            {
+                                title: (<FormattedMessage
+                                    defaultMessage="Data settings"
+                                    description="Menu bar item for data settings"
+                                    id="gui.menuBar.dataSettings"
+                                />),
+                                onClick: () => this.props.onTelemetrySettingsClicked()
+                            }
+                        ]}
+                        onClickLogo={this.handleClickLogo}
+                        onClickCheckUpdate={this.handleClickCheckUpdate}
+                        onClickUpdate={this.handleClickUpdate}
+                        onAbortUpdate={this.handleAbortUpdate}
+                        onClickInstallDriver={this.handleClickInstallDriver}
+                        onClickClearCache={this.handleClickClearCache}
+                        onEnsureResourcePack={this.handleEnsureResourcePack}
+                        onGetResourcePackStatus={this.handleGetResourcePackStatus}
+                        onProjectTelemetryEvent={this.handleProjectTelemetryEvent}
+                        onRemoveResourcePack={this.handleRemoveResourcePack}
+                        onShowMessageBox={this.handleShowMessageBox}
+                        onShowPrivacyPolicy={showPrivacyPolicy}
+                        onStorageInit={this.handleStorageInit}
+                        onUpdateProjectTitle={this.handleUpdateProjectTitle}
 
-                // allow passed-in props to override any of the above
-                {...childProps}
-            />);
+                        // allow passed-in props to override any of the above
+                        {...childProps}
+                    />
+                    {this.state.resourcePackStatus ? (
+                        <ResourcePackModal
+                            status={this.state.resourcePackStatus}
+                            onCancel={this.handleCancelResourcePack}
+                            onInstall={this.handleInstallResourcePack}
+                            onUseInstalled={this.handleUseInstalledResourcePack}
+                        />
+                    ) : null}
+                </React.Fragment>
+            );
         }
     }
 

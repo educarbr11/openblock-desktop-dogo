@@ -7,6 +7,9 @@ const root = path.resolve(__dirname, '..');
 const arduinoRoot = path.join(root, 'tools', 'Arduino');
 const cli = path.join(arduinoRoot, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
 const avrRoot = path.join(arduinoRoot, 'packages', 'arduino', 'hardware', 'avr');
+const esp32Root = path.join(arduinoRoot, 'packages', 'esp32');
+const installedLink = path.join(root, 'node_modules', 'openblock-link');
+const nestedLinkTools = path.join(root, 'node_modules', 'openblock-link', 'tools');
 const microbitRealtimeFirmware = path.join(
     root,
     'firmwares',
@@ -20,6 +23,10 @@ const fail = message => {
 
 if (!fs.existsSync(cli)) fail(`missing ${path.relative(root, cli)}`);
 if (!fs.existsSync(avrRoot)) fail(`missing ${path.relative(root, avrRoot)}`);
+if (fs.existsSync(esp32Root)) fail(`optional ESP32 core leaked into ${path.relative(root, esp32Root)}`);
+if (fs.existsSync(nestedLinkTools) && !fs.lstatSync(installedLink).isSymbolicLink()) {
+    fail(`duplicated tools found in ${path.relative(root, nestedLinkTools)}`);
+}
 if (!fs.existsSync(microbitRealtimeFirmware) || fs.statSync(microbitRealtimeFirmware).size === 0) {
     fail(`missing ${path.relative(root, microbitRealtimeFirmware)}`);
 }

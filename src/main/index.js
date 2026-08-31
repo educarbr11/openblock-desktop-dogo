@@ -628,6 +628,20 @@ app.on('ready', () => {
         desktopLink.clearCache();
     });
 
+    ipcMain.handle('resource-pack:get-status', (event, packId) =>
+        desktopLink.resourcePackManager.getStatus(packId));
+    ipcMain.handle('resource-pack:install', (event, packId) =>
+        desktopLink.resourcePackManager.install(packId));
+    ipcMain.handle('resource-pack:cancel', (event, packId) =>
+        desktopLink.resourcePackManager.cancel(packId));
+    ipcMain.handle('resource-pack:remove', (event, packId) =>
+        desktopLink.resourcePackManager.remove(packId));
+    desktopLink.resourcePackManager.on('progress', status => {
+        if (_windows.main && !_windows.main.isDestroyed()) {
+            _windows.main.webContents.send('resource-pack:progress', status);
+        }
+    });
+
     ipcMain.on('installDriver', () => {
         desktopLink.installDriver(() => {
             dialog.showMessageBox(_windows.main, {

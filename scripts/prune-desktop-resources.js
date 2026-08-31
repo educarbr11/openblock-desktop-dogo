@@ -4,7 +4,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const dryRun = process.argv.includes('--dry-run');
 
-const allowedArduinoPackages = new Set(['arduino', 'builtin', 'esp32']);
+const allowedArduinoPackages = new Set(['arduino', 'builtin']);
 const allowedExternalExtensions = new Set(['displayLcd', 'ledMatrix']);
 const allowedArduinoFirmwares = new Set(['arduinoUno.hex']);
 const allowedMicrobitFirmwares = new Set([
@@ -98,6 +98,14 @@ const pruneFirmwares = () => {
     keepOnlyChildren(path.join(root, 'firmwares', 'microPython'), allowedMicroPythonFirmwares);
 };
 
+const pruneNestedLinkResources = () => {
+    const installedLink = path.join(root, 'node_modules', 'openblock-link');
+    if (!fs.existsSync(installedLink) || fs.lstatSync(installedLink).isSymbolicLink()) return;
+    removePath(path.join(installedLink, 'tools'));
+    removePath(path.join(installedLink, 'firmwares'));
+};
+
 pruneArduinoTools();
 pruneExternalResources();
 pruneFirmwares();
+pruneNestedLinkResources();
