@@ -7,15 +7,15 @@
   "variants": {
     "linux-x64": {
       "url": "https://github.com/educarbr11/openblock-desktop-dogo/releases/download/esp32-pack-v1.0.0/dogoblock-esp32-pack-v1.0.0-linux-x64.tar.gz",
-      "sha256": "REPLACE_WITH_LINUX_X64_SHA256",
-      "archiveBytes": 0,
-      "installedBytes": 1503238554
+      "sha256": "0e69921ac33cf9a0a8d1608053709a8bfa7008238df47b567fa98b76815473d1",
+      "archiveBytes": 475700342,
+      "installedBytes": 1402722847
     },
     "win32-x64": {
       "url": "https://github.com/educarbr11/openblock-desktop-dogo/releases/download/esp32-pack-v1.0.0/dogoblock-esp32-pack-v1.0.0-win32-x64.tar.gz",
-      "sha256": "REPLACE_WITH_WIN32_X64_SHA256",
-      "archiveBytes": 0,
-      "installedBytes": 1503238554
+      "sha256": "eeb87a036eb06046debc5a546f6091ad7f882e981de08e18d9417c82414e26eb",
+      "archiveBytes": 462282361,
+      "installedBytes": 1395504783
     }
   }
 }
