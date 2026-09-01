@@ -22,7 +22,8 @@ module.exports = context => {
         }
     });
 
-    const maximumBytes = Number(process.env.DOGOBLOCK_MAX_PACKAGED_BYTES) || (3 * 1024 * 1024 * 1024);
+    const defaultMaximumBytes = 3584 * 1024 * 1024;
+    const maximumBytes = Number(process.env.DOGOBLOCK_MAX_PACKAGED_BYTES) || defaultMaximumBytes;
     const packagedBytes = directorySize(appRoot);
     if (packagedBytes > maximumBytes) {
         throw new Error(
