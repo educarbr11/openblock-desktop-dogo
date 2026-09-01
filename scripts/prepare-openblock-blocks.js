@@ -41,16 +41,30 @@ generatedFiles.forEach(file => {
 });
 
 const requiredGeneratorMarkers = [
+    ['generators/arduino.js', 'Blockly.Arduino.getSerialStringVariableIds_'],
     ['generators/python/microbit.js', "Blockly.Python['microbit_sensor_soundLevel']"],
     ['generators/python/microbit.js', "Blockly.Python['microbit_whenLogo']"],
     ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_pin_setDigitalOutput']"],
-    ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_serial_serialReadData']"]
+    ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_serial_serialReadData']"],
+    ['generators/arduino/arduino.js', 'data.trim();']
 ];
 
 requiredGeneratorMarkers.forEach(([file, marker]) => {
     const source = path.join(sourceBlocks, file);
     if (!fs.readFileSync(source, 'utf8').includes(marker)) {
         throw new Error(`Checked out openblock-blocks is missing ${marker} in ${file}.`);
+    }
+});
+
+const requiredBundledGeneratorMarkers = [
+    ['arduino_compressed.js', 'getSerialStringVariableIds_'],
+    ['arduino_compressed.js', 'data.trim()']
+];
+
+requiredBundledGeneratorMarkers.forEach(([file, marker]) => {
+    const bundledFile = path.join(bundledGenerators, file);
+    if (!fs.readFileSync(bundledFile, 'utf8').includes(marker)) {
+        throw new Error(`Bundled openblock-blocks is missing ${marker} in ${file}.`);
     }
 });
 
