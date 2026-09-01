@@ -1,5 +1,17 @@
 # Change Log
 
+## 2.6.32
+
+- **Fix bug**
+
+    1. Bundle `lucide-react` with the renderer so production packages can resolve React correctly at startup.
+    2. Validate renderer dependencies during compilation to prevent broken Desktop packages.
+
+- **Build**
+
+    1. Run the automatic Desktop release workflow only for version tags.
+    2. Keep test builds and ESP32 resource pack builds available as manual workflows.
+
 ## 2.6.3
 
 - **Fix bug**
@@ -447,4 +459,3 @@ git
 
     1. microbit
     2. iron robot kit
-

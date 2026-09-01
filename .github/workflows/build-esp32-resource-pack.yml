@@ -1,17 +1,6 @@
 name: Build ESP32 resource pack
 
 on:
-  push:
-    branches:
-      - dogo-dev
-    paths:
-      - '.github/workflows/build-esp32-resource-pack.yml'
-      - 'scripts/build-esp32-resource-pack.js'
-      - 'scripts/merge-esp32-resource-pack-manifests.js'
-      - 'scripts/verify-esp32-resource-pack-manifest.js'
-      - 'resource-packs/esp32.json'
-      - 'package.json'
-      - 'package-lock.json'
   workflow_dispatch:
     inputs:
       version:
@@ -76,7 +65,7 @@ jobs:
           retention-days: 7
 
   publish:
-    if: ${{ github.event_name == 'push' || inputs.publish }}
+    if: ${{ inputs.publish }}
     needs: build
     runs-on: ubuntu-24.04
     steps:
