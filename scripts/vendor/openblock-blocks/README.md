@@ -1,7 +1,7 @@
 # OpenBlock Blocks generator bundles
 
 These files are generated from `openblock-blocks` commit
-`3683be864bae77bb198a5176a7e659c167cfa4e3` and are copied into the desktop
+`c4fe0c7e6437793d6c7899ec48537c2454bd3ad9` and are copied into the desktop
 dependency before the GUI compatibility patches run.
 
 The upstream repository intentionally ignores `arduino_compressed.js` and

@@ -81,7 +81,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: educarbr11/openblock-gui-dogo
-          ref: b8e9a03ab68a8fd5469623ad0656f070f46c461d
+          ref: e01a086ccf109e13875279f4af192de4edb19569
           path: openblock-gui
 
       - name: Checkout OpenBlock Link
@@ -95,7 +95,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: educarbr11/openblock-blocks
-          ref: 3683be864bae77bb198a5176a7e659c167cfa4e3
+          ref: c4fe0c7e6437793d6c7899ec48537c2454bd3ad9
           path: openblock-blocks
 
       - name: Use Node.js
@@ -177,7 +177,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: educarbr11/openblock-gui-dogo
-          ref: b8e9a03ab68a8fd5469623ad0656f070f46c461d
+          ref: e01a086ccf109e13875279f4af192de4edb19569
           path: openblock-gui
 
       - name: Checkout OpenBlock Link
@@ -191,7 +191,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: educarbr11/openblock-blocks
-          ref: 3683be864bae77bb198a5176a7e659c167cfa4e3
+          ref: c4fe0c7e6437793d6c7899ec48537c2454bd3ad9
           path: openblock-blocks
 
       - name: Use Node.js
