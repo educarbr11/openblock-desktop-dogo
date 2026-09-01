@@ -117,8 +117,9 @@ const arduinoGenerator = fs.readFileSync(
 if (!arduinoGenerator.includes('__dogoblockDigitalWriteSetupOnly')) {
     throw new Error('Desktop Arduino generator does not configure digital output in setup().');
 }
-if (!arduinoGenerator.includes('dogoblockSerialReadData')) {
-    throw new Error('Desktop Arduino generator is missing serial data reading support.');
+if (!arduinoGenerator.includes('arduino_serial_serialReadData=function') ||
+    !arduinoGenerator.includes('return["Serial.read()",Blockly.Arduino.ORDER_ATOMIC]')) {
+    throw new Error('Desktop Arduino generator is missing serial byte reading support.');
 }
 
 console.log('Desktop GUI dependencies, PT-BR translations and DoGo Block branding are ready.');
