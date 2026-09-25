@@ -121,5 +121,9 @@ if (!arduinoGenerator.includes('arduino_serial_serialReadData=function') ||
     !arduinoGenerator.includes('return["Serial.read()",Blockly.Arduino.ORDER_ATOMIC]')) {
     throw new Error('Desktop Arduino generator is missing serial byte reading support.');
 }
+if (!arduinoGenerator.includes('arduino_pin_setTempo=function') ||
+    !arduinoGenerator.includes('dogoblockTempoBpm')) {
+    throw new Error('Desktop Arduino generator is missing configurable tempo support.');
+}
 
 console.log('Desktop GUI dependencies, PT-BR translations and DoGo Block branding are ready.');

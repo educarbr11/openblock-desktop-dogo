@@ -44,6 +44,7 @@ const requiredGeneratorMarkers = [
     ['generators/python/microbit.js', "Blockly.Python['microbit_sensor_soundLevel']"],
     ['generators/python/microbit.js', "Blockly.Python['microbit_whenLogo']"],
     ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_pin_setDigitalOutput']"],
+    ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_pin_setTempo']"],
     ['generators/arduino/arduino.js', "Blockly.Arduino['arduino_serial_serialReadData']"],
     ['generators/arduino/arduino.js', "return ['Serial.read()', Blockly.Arduino.ORDER_ATOMIC]"],
     ['generators/arduino/operator.js', 'normalizeExplicitCharacter']
@@ -58,7 +59,9 @@ requiredGeneratorMarkers.forEach(([file, marker]) => {
 
 const requiredBundledGeneratorMarkers = [
     ['arduino_compressed.js', 'arduino_serial_serialReadData=function'],
-    ['arduino_compressed.js', 'return["Serial.read()",Blockly.Arduino.ORDER_ATOMIC]']
+    ['arduino_compressed.js', 'return["Serial.read()",Blockly.Arduino.ORDER_ATOMIC]'],
+    ['arduino_compressed.js', 'arduino_pin_setTempo=function'],
+    ['arduino_compressed.js', 'dogoblockTempoBpm']
 ];
 
 requiredBundledGeneratorMarkers.forEach(([file, marker]) => {
