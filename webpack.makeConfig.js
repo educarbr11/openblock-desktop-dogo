@@ -16,6 +16,9 @@ const postcssVars = require('postcss-simple-vars');
 const postcssImport = require('postcss-import');
 
 const isProduction = (process.env.NODE_ENV === 'production');
+const sentryRelease = process.env.SENTRY_RELEASE || '';
+const dogoblockApiHost = process.env.DOGOBLOCK_API_HOST || 'https://dogoblockapi.dogomaker.com';
+const sentryTunnelUrl = process.env.SENTRY_TUNNEL_URL || `${dogoblockApiHost}/observability/envelope`;
 const workspaceRoot = path.resolve(__dirname, '..');
 const localOpenBlockVMPath = process.env.OPENBLOCK_VM_PATH ?
     path.resolve(process.env.OPENBLOCK_VM_PATH) :
@@ -30,6 +33,14 @@ const electronVersion = childProcess.execSync(`${electronPath} --version`, {enco
 console.log(`Targeting Electron ${electronVersion}`); // eslint-disable-line no-console
 
 const makeConfig = function (defaultConfig, options) {
+    const sourceMapOptions = {
+        filename: '[file].map'
+    };
+    if (isProduction) sourceMapOptions.append = false;
+    const sourceMapPlugins = isProduction && !options.useReact ? [] : [
+        new webpack.SourceMapDevToolPlugin(sourceMapOptions)
+    ];
+
     const babelOptions = {
         // Explicitly disable babelrc so we don't catch various config in much lower dependencies.
         babelrc: false,
@@ -72,7 +83,7 @@ const makeConfig = function (defaultConfig, options) {
     }
 
     const config = merge.smart(defaultConfig, {
-        devtool: 'cheap-module-eval-source-map',
+        devtool: false,
         mode: isProduction ? 'production' : 'development',
         output: {
             hashFunction: 'sha256'
@@ -138,16 +149,22 @@ const makeConfig = function (defaultConfig, options) {
         plugins: [
             new webpack.DefinePlugin({
                 'process.env.GA_ID': `"${process.env.GA_ID || 'UA-000000-01'}"`,
-                'process.env.OPENBLOCK_LINK_PORT': '"20113"'
-            }),
-            new webpack.SourceMapDevToolPlugin({
-                filename: '[file].map'
-            }),
+                'process.env.OPENBLOCK_LINK_PORT': '"20113"',
+                'process.env.OPENBLOCK_TAURI_LIGHT': '"false"',
+                'process.env.DOGOBLOCK_API_HOST': JSON.stringify(dogoblockApiHost),
+                'process.env.SENTRY_DSN': JSON.stringify(process.env.SENTRY_DSN || ''),
+                'process.env.SENTRY_ENVIRONMENT': JSON.stringify(
+                    process.env.SENTRY_ENVIRONMENT || (isProduction ? 'production' : 'development')
+                ),
+                'process.env.SENTRY_RELEASE': JSON.stringify(sentryRelease),
+                'process.env.SENTRY_TUNNEL_URL': JSON.stringify(sentryTunnelUrl)
+            })
+        ].concat(sourceMapPlugins, [
             new MonacoWebpackPlugin({
                 languages: ['c', 'cpp', 'python', 'lua', 'javascript'],
                 features: ['!gotoSymbol']
             })
-        ].concat(options.plugins || []),
+        ], options.plugins || []),
         resolve: {
             cacheWithContext: false,
             symlinks: false,

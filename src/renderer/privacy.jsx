@@ -6,7 +6,7 @@ import styles from './privacy.css';
 const PrivacyElement = () => (
     <div className={styles.privacyBox}>
         <h1>Privacy Policy</h1>
-        <i>The DoGoBlock Privacy Policy was last updated: October 5, 2020</i>
+        <i>The DoGoBlock Privacy Policy was last updated: October 1, 2026</i>
         <p>
             The DoGoBlock Team (&ldquo;DoGoBlock&rdquo;, &ldquo;we&rdquo; or &ldquo;us&rdquo;) understands how
             important privacy is to our community. We wrote this Privacy Policy to explain what Personal Information
@@ -20,6 +20,14 @@ const PrivacyElement = () => (
                 target="_blank"
                 rel="noopener noreferrer"
             >contact us</a> if you have any questions or concerns.
+        </p>
+        <p>
+            When diagnostics are enabled in a distributed build, the DoGoBlock App uses Sentry to receive unexpected
+            interface errors and feedback that you choose to submit. This may include the app version, operating
+            system, language, current editor route, selected board and programming mode. Your projects, workspace,
+            generated code, serial logs, credentials and authentication tokens are not sent to Sentry. A screenshot
+            is sent only when you choose to attach it to the feedback. A name and email address are sent only when you
+            voluntarily enter them in the feedback form.
         </p>
         <h2>What Information Does DoGoBlock Collect About Me?</h2>
         <p>
@@ -67,7 +75,8 @@ const PrivacyElement = () => (
             <li>
                 <b>Service Providers</b> - To third parties who provide services such as website hosting, data
                 analysis, Information technology and related infrastructure provisions, customer service, email
-                delivery, and other services.
+                delivery, error diagnostics and other services. Sentry is used for interface error diagnostics and
+                voluntary feedback when configured in the distributed build.
             </li>
             <li>
                 <b>Merger</b> - To a potential or actual acquirer, successor, or assignee as part of any

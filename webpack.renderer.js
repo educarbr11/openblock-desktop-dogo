@@ -1,6 +1,8 @@
+const fs = require('fs');
 const path = require('path');
 
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const {sentryWebpackPlugin} = require('@sentry/webpack-plugin');
 
 const makeConfig = require('./webpack.makeConfig.js');
 
@@ -26,6 +28,43 @@ const hasLocalOpenBlockGUI = (() => {
         return false;
     }
 })();
+
+class RemoveSourceMapsPlugin {
+    apply (compiler) {
+        compiler.hooks.done.tap('RemoveSourceMapsPlugin', () => {
+            const removeMaps = directory => {
+                if (!fs.existsSync(directory)) return;
+                fs.readdirSync(directory, {withFileTypes: true}).forEach(entry => {
+                    const entryPath = path.join(directory, entry.name);
+                    if (entry.isDirectory()) removeMaps(entryPath);
+                    else if (entry.name.endsWith('.map')) fs.unlinkSync(entryPath);
+                });
+            };
+            removeMaps(compiler.options.output.path);
+        });
+    }
+}
+
+const createSentryWebpackPlugins = () => {
+    if (process.env.NODE_ENV !== 'production') return [];
+    if (!process.env.SENTRY_AUTH_TOKEN || !process.env.SENTRY_ORG ||
+        !process.env.SENTRY_PROJECT || !process.env.SENTRY_RELEASE) {
+        return [new RemoveSourceMapsPlugin()];
+    }
+
+    const rendererOutput = path.resolve(__dirname, 'dist', 'renderer');
+    return [sentryWebpackPlugin({
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        org: process.env.SENTRY_ORG,
+        project: process.env.SENTRY_PROJECT,
+        release: {name: process.env.SENTRY_RELEASE},
+        sourcemaps: {
+            assets: path.join(rendererOutput, '**/*.js'),
+            filesToDeleteAfterUpload: path.join(rendererOutput, '**/*.js.map')
+        },
+        telemetry: false
+    })];
+};
 
 // Fixed the issue that when using link to local gui package in node16, an error message appears saying that the
 // blocks vm package in gui cannot be found.
@@ -83,6 +122,6 @@ module.exports = defaultConfig =>
                     from: path.join(getModulePath('openblock-gui'), 'static', 'ml-vendor'),
                     to: 'static/ml-vendor'
                 }])
-            ]
+            ].concat(createSentryWebpackPlugins())
         }
     );

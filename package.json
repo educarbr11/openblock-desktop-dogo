@@ -43,6 +43,7 @@
     "url": "git+https://github.com/educarbr11/openblock-desktop-dogo.git"
   },
   "dependencies": {
+    "@sentry/react": "8.55.0",
     "bytes": "^3.1.2",
     "openblock-link": "git+https://github.com/educarbr11/openblock-link-dogo.git#2736584b8abfd8f5fef2f5b840d0fe9c0fc7b41a",
     "openblock-resource": "^0.2.0-prerelease.20250302101433",
@@ -58,6 +59,7 @@
     "@babel/preset-env": "^7.9.6",
     "@babel/preset-react": "^7.9.4",
     "@electron/remote": "^2.0.5",
+    "@sentry/webpack-plugin": "2.22.7",
     "async": "^3.2.0",
     "autoprefixer": "^9.8.8",
     "babel-eslint": "^10.1.0",
