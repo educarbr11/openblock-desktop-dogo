@@ -38,7 +38,10 @@ if (!fs.existsSync(arduinoUploader)) {
 const uploaderSource = fs.readFileSync(arduinoUploader, 'utf8');
 [
     "os.platform() === 'win32' ? 'arduino-cli.exe' : 'arduino-cli'",
-    'Arduino CLI config validation'
+    'Arduino CLI config validation',
+    'const AVRDUDE_MAX_NANO_SYNC_ATTEMPTS = 3',
+    "require('./arduino-upload-profile-store')",
+    "const ARDUINO_NANO_OLD_BOOTLOADER_FQBN = 'arduino:avr:nano:cpu=atmega328old'"
 ].forEach(marker => {
     if (!uploaderSource.includes(marker)) {
         throw new Error(
