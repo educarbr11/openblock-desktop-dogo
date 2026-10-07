@@ -1,5 +1,20 @@
 # Change Log
 
+## 2.6.33
+
+- **New feature**
+
+    1. Add low-latency, non-blocking micro:bit controls for realtime stage projects.
+    2. Add automatic Arduino Nano upload profiles, including old bootloader support.
+    3. Add Sentry feedback and diagnostics to the Desktop renderer.
+    4. Add the latest Arduino digital pin and configurable BPM blocks.
+
+- **Fix bug**
+
+    1. Reduce the delay between pressing a micro:bit button and triggering game actions.
+    2. Keep sprite lists usable when a project contains many sprites.
+    3. Improve session renewal, logout behavior and remote asset loading.
+
 ## 2.6.32
 
 - **Fix bug**

@@ -3,7 +3,7 @@
   "productName": "DoGoBlock",
   "description": "DoGoBlock as a self-contained desktop application",
   "author": "Openblock.cc Team <contact@openblock.cc> (http://www.openblock.cc/)",
-  "version": "2.6.32",
+  "version": "2.6.33",
   "license": "MIT",
   "scripts": {
     "postinstall": "node scripts/prepare-usb-native-build.js && electron-builder install-app-deps",
@@ -45,7 +45,7 @@
   "dependencies": {
     "@sentry/react": "8.55.0",
     "bytes": "^3.1.2",
-    "openblock-link": "git+https://github.com/educarbr11/openblock-link-dogo.git#2736584b8abfd8f5fef2f5b840d0fe9c0fc7b41a",
+    "openblock-link": "git+https://github.com/educarbr11/openblock-link-dogo.git#86b242b85879cc01e8a3a616a68ef33dbe71ceba",
     "openblock-resource": "^0.2.0-prerelease.20250302101433",
     "source-map-support": "^0.5.19",
     "tar": "^6.2.1"
@@ -96,7 +96,7 @@
     "monaco-editor-webpack-plugin": "^1.7.0",
     "nets": "^3.2.0",
     "node-abort-controller": "^3.0.1",
-    "openblock-gui": "git+https://github.com/educarbr11/openblock-gui-dogo.git#5cde15324f97eb54386c774cd8d17630e1e85668",
+    "openblock-gui": "git+https://github.com/educarbr11/openblock-gui-dogo.git#b6d14a3b7a5f586d4107eead19295fb3f9318145",
     "openblock-l10n": "^3.15.20250608130541",
     "openblock-parse-release-message": "0.0.4",
     "postcss-import": "^12.0.1",
