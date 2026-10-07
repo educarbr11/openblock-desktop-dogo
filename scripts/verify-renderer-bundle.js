@@ -9,21 +9,28 @@ if (!fs.existsSync(rendererConfigPath) || !fs.existsSync(rendererDirectory)) {
     throw new Error('Renderer build output was not found. Run the Desktop compilation first.');
 }
 
-const rendererConfig = fs.readFileSync(rendererConfigPath, 'utf8');
-if (/externals:\s*\[[\s\S]*?['"]lucide-react['"]/.test(rendererConfig)) {
-    throw new Error('lucide-react must be bundled with the renderer, not packaged as an external dependency.');
-}
-
 const rendererFiles = fs.readdirSync(rendererDirectory)
     .filter(file => file.endsWith('.js'));
-const hasExternalLucide = rendererFiles.some(file => {
-    const source = fs.readFileSync(path.join(rendererDirectory, file), 'utf8');
-    return /external ["']lucide-react["']/.test(source) ||
-        /require\(["']lucide-react["']\)/.test(source);
-});
+const rendererConfig = fs.readFileSync(rendererConfigPath, 'utf8');
+const rendererSources = rendererFiles.map(file =>
+    fs.readFileSync(path.join(rendererDirectory, file), 'utf8')
+);
+const bundledDependencies = ['lucide-react', '@sentry/react'];
 
-if (hasExternalLucide) {
-    throw new Error('Renderer output still contains a runtime require for lucide-react.');
-}
+bundledDependencies.forEach(dependency => {
+    if (rendererConfig.includes(`'${dependency}'`) || rendererConfig.includes(`"${dependency}"`)) {
+        throw new Error(`${dependency} must be bundled with the renderer, not packaged as an external dependency.`);
+    }
+
+    const hasRuntimeRequire = rendererSources.some(source =>
+        source.includes(`external "${dependency}"`) ||
+        source.includes(`external '${dependency}'`) ||
+        source.includes(`require("${dependency}")`) ||
+        source.includes(`require('${dependency}')`)
+    );
+    if (hasRuntimeRequire) {
+        throw new Error(`Renderer output still contains a runtime require for ${dependency}.`);
+    }
+});
 
 console.log('Renderer dependencies are bundled correctly.'); // eslint-disable-line no-console

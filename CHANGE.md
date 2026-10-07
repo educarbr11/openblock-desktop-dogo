@@ -1,5 +1,12 @@
 # Change Log
 
+## 2.6.34
+
+- **Fix bug**
+
+    1. Bundle `@sentry/react` with the renderer so Linux packages no longer fail to start with a missing React module.
+    2. Validate Sentry and icon dependencies during compilation to prevent runtime-only renderer imports.
+
 ## 2.6.33
 
 - **New feature**

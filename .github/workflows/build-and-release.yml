@@ -36,17 +36,11 @@ jobs:
           tag_name: ${{ steps.tag.outputs.tag }}
           release_name: DoGoBlock Desktop ${{ steps.tag.outputs.tag }}
           body: |
-            ## Novidades
-
-            - Controles do micro:bit no palco com leitura não bloqueante e disparo de eventos em baixa latência.
-            - Perfil automático de upload para Arduino Nano, incluindo suporte ao bootloader antigo.
-            - Feedback de erros e sugestões integrado ao Sentry.
-            - Novos ajustes dos blocos Arduino para pinos digitais e ritmo em BPM.
-
             ## Correções
 
-            - Rolagem da lista de sprites em projetos com muitos atores.
-            - Renovação de sessão, saída da conta e carregamento de recursos no Dogoblock Online/Desktop.
+            - Corrige a inicialização no Linux após a integração do Sentry.
+            - Incorpora o SDK do Sentry ao renderer, eliminando a dependência externa ausente do React.
+            - Adiciona uma validação de build para impedir a recorrência desse erro.
           draft: true
           prerelease: false
     outputs:

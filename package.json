@@ -3,7 +3,7 @@
   "productName": "DoGoBlock",
   "description": "DoGoBlock as a self-contained desktop application",
   "author": "Openblock.cc Team <contact@openblock.cc> (http://www.openblock.cc/)",
-  "version": "2.6.33",
+  "version": "2.6.34",
   "license": "MIT",
   "scripts": {
     "postinstall": "node scripts/prepare-usb-native-build.js && electron-builder install-app-deps",
@@ -43,7 +43,6 @@
     "url": "git+https://github.com/educarbr11/openblock-desktop-dogo.git"
   },
   "dependencies": {
-    "@sentry/react": "8.55.0",
     "bytes": "^3.1.2",
     "openblock-link": "git+https://github.com/educarbr11/openblock-link-dogo.git#86b242b85879cc01e8a3a616a68ef33dbe71ceba",
     "openblock-resource": "^0.2.0-prerelease.20250302101433",
@@ -59,6 +58,7 @@
     "@babel/preset-env": "^7.9.6",
     "@babel/preset-react": "^7.9.4",
     "@electron/remote": "^2.0.5",
+    "@sentry/react": "8.55.0",
     "@sentry/webpack-plugin": "2.22.7",
     "async": "^3.2.0",
     "autoprefixer": "^9.8.8",
