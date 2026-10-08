@@ -1,4 +1,4 @@
-import {BrowserWindow, Menu, app, dialog, ipcMain, shell, systemPreferences} from 'electron';
+import {BrowserWindow, Menu, app, dialog, ipcMain, protocol, shell, systemPreferences} from 'electron';
 import * as remote from '@electron/remote/main';
 import fs from 'fs-extra';
 import path from 'path';
@@ -23,6 +23,17 @@ const storage = new ElectronStore();
 const desktopLink = new DesktopLink();
 let pendingLinkError = null;
 let pendingBluetoothDeviceSelection = null;
+const resourcePackLeaseOwners = new Set();
+
+protocol.registerSchemesAsPrivileged([{
+    scheme: 'dogoblock-resource',
+    privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        corsEnabled: true
+    }
+}]);
 
 formatMessage.setup({translations: locales});
 
@@ -606,6 +617,21 @@ if (process.platform === 'win32') {
 
 // create main BrowserWindow when electron is ready
 app.on('ready', () => {
+    protocol.registerFileProtocol('dogoblock-resource', (request, callback) => {
+        try {
+            const resourceUrl = new URL(request.url);
+            const packId = resourceUrl.hostname;
+            if (packId !== 'ai-ml') {
+                throw new Error('Only the AI/ML resource pack is available to the renderer.');
+            }
+            const relativePath = decodeURIComponent(resourceUrl.pathname.replace(/^\/+/, ''));
+            callback({path: desktopLink.resourcePackManager.resolvePackFile(packId, relativePath)});
+        } catch (error) {
+            log.error(`Optional resource request failed: ${error.message}`);
+            callback({error: -6});
+        }
+    });
+
     if (isDevelopment) {
         import('electron-devtools-installer').then(importedModule => {
             const {default: installExtension, ...devToolsExtensions} = importedModule;
@@ -636,6 +662,25 @@ app.on('ready', () => {
         desktopLink.resourcePackManager.cancel(packId));
     ipcMain.handle('resource-pack:remove', (event, packId) =>
         desktopLink.resourcePackManager.remove(packId));
+    ipcMain.handle('resource-pack:acquire', (event, packId) => {
+        const ownerId = event.sender.id;
+        if (!resourcePackLeaseOwners.has(ownerId)) {
+            resourcePackLeaseOwners.add(ownerId);
+            event.sender.once('destroyed', () => {
+                desktopLink.resourcePackManager.releaseOwner(ownerId);
+                resourcePackLeaseOwners.delete(ownerId);
+            });
+        }
+        const lease = desktopLink.resourcePackManager.acquirePack(packId, ownerId);
+        return {
+            id: lease.id,
+            leaseId: lease.leaseId,
+            status: lease.status,
+            baseUrl: `dogoblock-resource://${packId}/`
+        };
+    });
+    ipcMain.handle('resource-pack:release', (event, leaseId) =>
+        desktopLink.resourcePackManager.releasePack(leaseId));
     desktopLink.resourcePackManager.on('progress', status => {
         if (_windows.main && !_windows.main.isDestroyed()) {
             _windows.main.webContents.send('resource-pack:progress', status);

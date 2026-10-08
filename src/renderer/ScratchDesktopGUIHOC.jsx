@@ -46,12 +46,14 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
         constructor (props) {
             super(props);
             bindAll(this, [
+                'handleAcquireResourcePack',
                 'handleCancelResourcePack',
                 'handleEnsureResourcePack',
                 'handleGetResourcePackStatus',
                 'handleInstallResourcePack',
                 'handleProjectTelemetryEvent',
                 'handleRemoveResourcePack',
+                'handleReleaseResourcePack',
                 'handleResourcePackProgress',
                 'handleSetTitleFromSave',
                 'handleShowMessageBox',
@@ -160,9 +162,18 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
         handleGetResourcePackStatus (packId) {
             return ipcRenderer.invoke('resource-pack:get-status', packId);
         }
+        handleAcquireResourcePack (packId) {
+            return this.handleEnsureResourcePack(packId)
+                .then(() => ipcRenderer.invoke('resource-pack:acquire', packId));
+        }
+        handleReleaseResourcePack (leaseId) {
+            if (!leaseId) return Promise.resolve(false);
+            return ipcRenderer.invoke('resource-pack:release', leaseId);
+        }
         handleEnsureResourcePack (packId) {
-            if (this.pendingResourcePack && this.pendingResourcePack.packId === packId) {
-                return this.pendingResourcePack.promise;
+            if (this.pendingResourcePack) {
+                if (this.pendingResourcePack.packId === packId) return this.pendingResourcePack.promise;
+                return Promise.reject(new Error('Another optional resource request is already in progress.'));
             }
             return this.handleGetResourcePackStatus(packId).then(status => {
                 if (status.phase === 'ready' && status.canUse) return status;
@@ -201,11 +212,14 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
             })
                 .catch(error => {
                     if (!this.pendingResourcePack || this.pendingResourcePack.packId !== packId) return;
+                    const message = String(error.message || '').replace(
+                        /^Error invoking remote method '[^']+': (?:Error: )?/, ''
+                    );
                     this.setState({
                         resourcePackStatus: Object.assign({}, this.state.resourcePackStatus, {
                             phase: 'error',
                             progress: 0,
-                            message: error.message
+                            message
                         })
                     });
                 });
@@ -236,34 +250,39 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
         }
         handleRemoveResourcePack (packId) {
             const isPortuguese = this.props.locale.indexOf('pt') === 0;
-            const copy = isPortuguese ? {
-                remove: 'Remover',
-                cancel: 'Cancelar',
-                title: 'Remover suporte ESP32',
-                message: 'Remover o suporte ESP32 deste computador?',
-                detail: 'Seus projetos e blocos não serão apagados. Para usar ESP32 novamente, será necessário ' +
-                    'baixar o pacote.'
-            } : {
-                remove: 'Remove',
-                cancel: 'Cancel',
-                title: 'Remove ESP32 support',
-                message: 'Remove ESP32 support from this computer?',
-                detail: 'Your projects and blocks will not be deleted. To use ESP32 again, download the package.'
-            };
-            return dialog.showMessageBox(remote.getCurrentWindow(), {
-                type: 'warning',
-                buttons: [copy.remove, copy.cancel],
-                defaultId: 1,
-                cancelId: 1,
-                title: copy.title,
-                message: copy.message,
-                detail: copy.detail
-            }).then(result => {
-                if (result.response !== 0) {
-                    return Promise.reject(new Error('Resource pack removal was cancelled.'));
-                }
-                return ipcRenderer.invoke('resource-pack:remove', packId);
-            });
+            return this.handleGetResourcePackStatus(packId).then(status => {
+                const packName = status.displayName || packId;
+                const copy = isPortuguese ? {
+                    remove: 'Remover',
+                    cancel: 'Cancelar',
+                    title: `Remover ${packName}`,
+                    message: `Remover ${packName} deste computador?`,
+                    detail: 'Seus projetos e blocos não serão apagados. Para usar este recurso novamente, será ' +
+                        'necessário baixar o pacote.'
+                } : {
+                    remove: 'Remove',
+                    cancel: 'Cancel',
+                    title: `Remove ${packName}`,
+                    message: `Remove ${packName} from this computer?`,
+                    detail: 'Your projects and blocks will not be deleted. Download the package to use this ' +
+                        'feature again.'
+                };
+                return dialog.showMessageBox(remote.getCurrentWindow(), {
+                    type: 'warning',
+                    buttons: [copy.remove, copy.cancel],
+                    defaultId: 1,
+                    cancelId: 1,
+                    title: copy.title,
+                    message: copy.message,
+                    detail: copy.detail
+                });
+            })
+                .then(result => {
+                    if (result.response !== 0) {
+                        return Promise.reject(new Error('Resource pack removal was cancelled.'));
+                    }
+                    return ipcRenderer.invoke('resource-pack:remove', packId);
+                });
         }
         handleSetTitleFromSave (event, args) {
             this.handleUpdateProjectTitle(args.title);
@@ -355,10 +374,12 @@ const ScratchDesktopGUIHOC = function (WrappedComponent) {
                         onAbortUpdate={this.handleAbortUpdate}
                         onClickInstallDriver={this.handleClickInstallDriver}
                         onClickClearCache={this.handleClickClearCache}
+                        onAcquireResourcePack={this.handleAcquireResourcePack}
                         onEnsureResourcePack={this.handleEnsureResourcePack}
                         onGetResourcePackStatus={this.handleGetResourcePackStatus}
                         onProjectTelemetryEvent={this.handleProjectTelemetryEvent}
                         onRemoveResourcePack={this.handleRemoveResourcePack}
+                        onReleaseResourcePack={this.handleReleaseResourcePack}
                         onShowMessageBox={this.handleShowMessageBox}
                         onShowPrivacyPolicy={showPrivacyPolicy}
                         onStorageInit={this.handleStorageInit}

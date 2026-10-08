@@ -88,8 +88,14 @@ const getModulePath = moduleName => {
     }
 };
 
-module.exports = defaultConfig =>
-    makeConfig(
+module.exports = defaultConfig => {
+    const rendererBundledDependencies = new Set(['@sentry/react', 'lucide-react']);
+    if (Array.isArray(defaultConfig.externals)) {
+        defaultConfig.externals = defaultConfig.externals.filter(
+            dependency => !rendererBundledDependencies.has(dependency)
+        );
+    }
+    return makeConfig(
         defaultConfig,
         {
             name: 'renderer',
@@ -117,11 +123,8 @@ module.exports = defaultConfig =>
                     from: path.join(getModulePath('openblock-gui'), 'src', 'lib', 'libraries', '*.json'),
                     to: 'static/libraries',
                     flatten: true
-                }]),
-                new CopyWebpackPlugin([{
-                    from: path.join(getModulePath('openblock-gui'), 'static', 'ml-vendor'),
-                    to: 'static/ml-vendor'
                 }])
             ].concat(createSentryWebpackPlugins())
         }
     );
+};

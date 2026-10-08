@@ -5,6 +5,13 @@ const root = path.resolve(__dirname, '..');
 const dryRun = process.argv.includes('--dry-run');
 
 const allowedArduinoPackages = new Set(['arduino', 'builtin']);
+const optionalArduinoTools = new Set([
+    'arduinoOTA',
+    'arm-none-eabi-gcc',
+    'bossac',
+    'dfu-util',
+    'openocd'
+]);
 const allowedExternalExtensions = new Set(['displayLcd', 'ledMatrix']);
 const allowedArduinoFirmwares = new Set(['arduinoUno.hex']);
 const allowedMicrobitFirmwares = new Set([
@@ -84,6 +91,25 @@ const copyLocalMicrobitFirmwares = () => {
 const pruneArduinoTools = () => {
     const arduinoRoot = path.join(root, 'tools', 'Arduino');
     keepOnlyChildren(path.join(arduinoRoot, 'packages'), allowedArduinoPackages);
+    removePath(path.join(arduinoRoot, 'packages', 'arduino', 'hardware', 'renesas_uno'));
+    optionalArduinoTools.forEach(tool =>
+        removePath(path.join(arduinoRoot, 'packages', 'arduino', 'tools', tool))
+    );
+};
+
+const pruneOptionalResources = () => {
+    removePath(path.join(root, 'tools', 'Python'));
+    removePath(path.join(root, 'dist', 'renderer', 'static', 'ml-vendor'));
+    const removeSourceMaps = directory => {
+        if (!fs.existsSync(directory)) return;
+        fs.readdirSync(directory, {withFileTypes: true}).forEach(entry => {
+            const entryPath = path.join(directory, entry.name);
+            if (entry.isDirectory()) removeSourceMaps(entryPath);
+            else if (entry.name.endsWith('.map')) removePath(entryPath);
+        });
+    };
+    removeSourceMaps(path.join(root, 'dist', 'main'));
+    removeSourceMaps(path.join(root, 'dist', 'renderer'));
 };
 
 const pruneExternalResources = () => {
@@ -106,6 +132,7 @@ const pruneNestedLinkResources = () => {
 };
 
 pruneArduinoTools();
+pruneOptionalResources();
 pruneExternalResources();
 pruneFirmwares();
 pruneNestedLinkResources();

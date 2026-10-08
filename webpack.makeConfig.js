@@ -130,7 +130,9 @@ const makeConfig = function (defaultConfig, options) {
                     test: /\.(svg|png|wav|gif|jpg|ttf)$/,
                     loader: 'file-loader',
                     options: {
-                        outputPath: 'static/assets/'
+                        // Keep renderer assets separate from the media library copied as an
+                        // external resource by electron-builder.
+                        outputPath: 'renderer-assets/'
                     }
                 },
                 {
@@ -169,6 +171,12 @@ const makeConfig = function (defaultConfig, options) {
             cacheWithContext: false,
             symlinks: false,
             alias: {
+                // Local GUI sources have their own node_modules. Force every renderer module to
+                // share the React instance used by ReactDOM, otherwise hooks fail in production.
+                ...(options.useReact ? {
+                    'react$': require.resolve('react'),
+                    'react-dom$': require.resolve('react-dom')
+                } : {}),
                 // act like scratch-gui has this line in its package.json:
                 //   "browser": "./src/index.js"
                 'openblock-gui': hasLocalOpenBlockGUI ?

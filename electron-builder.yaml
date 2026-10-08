@@ -1,13 +1,36 @@
 directories:
   buildResources: buildResources
   output: dist
+extends: []
+extraMetadata:
+  main: main.js
 afterPack: scripts/after-pack-verify.js
 extraFiles: ['LICENSE', 'LICENSE.ScratchFoundation', 'TRADEMARK', "tools", "external-resources", 'firmwares', "drivers", "resource-packs"]
 
 files:
-  - "**/*"
-  - "!node_modules/openblock-link/tools{,/**/*}"
-  - "!node_modules/openblock-link/firmwares{,/**/*}"
+  - from: "."
+    filter:
+      - "package.json"
+      - "node_modules/**/*"
+      - "!node_modules/openblock-link/tools{,/**/*}"
+      - "!node_modules/openblock-link/firmwares{,/**/*}"
+      - "!node_modules/openblock-gui/static/ml-vendor{,/**/*}"
+      - "!**/*.map"
+  - from: "dist/main"
+    to: "."
+    filter:
+      - "main.js"
+  - from: "dist/renderer"
+    to: "."
+    filter:
+      - "**/*"
+      - "!**/*.map"
+
+extraResources:
+  - from: "static/assets"
+    to: "static/assets"
+    filter:
+      - "**/*"
 
 appId: openblock.cc.openblock-desktop
 productName: "DoGoBlock"

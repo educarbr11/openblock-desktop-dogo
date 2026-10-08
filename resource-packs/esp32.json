@@ -1,21 +1,49 @@
 {
   "schemaVersion": 1,
   "id": "esp32",
+  "displayName": "Suporte ao ESP32",
+  "description": "Compilador e ferramentas locais para ESP32 e ESP32-S3. Funciona offline após instalar.",
   "version": "1.0.0",
   "minimumVersion": "1.0.0",
+  "compatibilityVersion": "arduino-esp32-3.1.3",
   "coreVersion": "3.1.3",
+  "requiredFiles": [
+    "tools/Arduino/packages/esp32/hardware/esp32/3.1.3/platform.txt",
+    "tools/Arduino/packages/esp32/tools/esp-x32",
+    "tools/Arduino/packages/esp32/tools/esp32-arduino-libs",
+    "tools/Arduino/packages/esp32/tools/esptool_py"
+  ],
+  "validation": {
+    "type": "arduino",
+    "coreId": "esp32:esp32",
+    "boardFqbns": ["esp32:esp32:esp32", "esp32:esp32:esp32s3"]
+  },
   "variants": {
     "linux-x64": {
       "url": "https://github.com/educarbr11/openblock-desktop-dogo/releases/download/esp32-pack-v1.0.0/dogoblock-esp32-pack-v1.0.0-linux-x64.tar.gz",
       "sha256": "0e69921ac33cf9a0a8d1608053709a8bfa7008238df47b567fa98b76815473d1",
       "archiveBytes": 475700342,
-      "installedBytes": 1402722847
+      "installedBytes": 1402722847,
+      "requiredFiles": [
+        "tools/Arduino/arduino-cli",
+        "tools/Arduino/packages/esp32/hardware/esp32/3.1.3/platform.txt",
+        "tools/Arduino/packages/esp32/tools/esp-x32",
+        "tools/Arduino/packages/esp32/tools/esp32-arduino-libs",
+        "tools/Arduino/packages/esp32/tools/esptool_py"
+      ]
     },
     "win32-x64": {
       "url": "https://github.com/educarbr11/openblock-desktop-dogo/releases/download/esp32-pack-v1.0.0/dogoblock-esp32-pack-v1.0.0-win32-x64.tar.gz",
       "sha256": "eeb87a036eb06046debc5a546f6091ad7f882e981de08e18d9417c82414e26eb",
       "archiveBytes": 462282361,
-      "installedBytes": 1395504783
+      "installedBytes": 1395504783,
+      "requiredFiles": [
+        "tools/Arduino/arduino-cli.exe",
+        "tools/Arduino/packages/esp32/hardware/esp32/3.1.3/platform.txt",
+        "tools/Arduino/packages/esp32/tools/esp-x32",
+        "tools/Arduino/packages/esp32/tools/esp32-arduino-libs",
+        "tools/Arduino/packages/esp32/tools/esptool_py"
+      ]
     }
   }
 }

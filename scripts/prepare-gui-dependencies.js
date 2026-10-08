@@ -26,6 +26,19 @@ if (!guiRoot) {
     throw new Error('Could not find openblock-gui translation patch script.');
 }
 
+const guiComponentSource = fs.readFileSync(path.join(guiRoot, 'src', 'components', 'gui', 'gui.jsx'), 'utf8');
+const extensionLibrarySource = fs.readFileSync(
+    path.join(guiRoot, 'src', 'lib', 'libraries', 'extensions', 'index.jsx'),
+    'utf8'
+);
+if (!guiComponentSource.includes('configureResourcePackService') ||
+    !extensionLibrarySource.includes("desktopResourcePackId: 'ai-ml'")) {
+    throw new Error(
+        'Checked out openblock-gui does not support optional AI/ML resources. ' +
+        'Set OPENBLOCK_GUI_PATH to the current repository.'
+    );
+}
+
 const patchScript = path.join(guiRoot, 'scripts', 'apply-scratch-paint-patch.js');
 const patchSupportsExternalDependencies = fs.readFileSync(patchScript, 'utf8')
     .includes('OPENBLOCK_PATCH_DEPENDENCIES_ROOT');

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "microbit-python",
+  "displayName": "Python para programar o micro:bit",
+  "description": "Runtime local usado para enviar programas MicroPython ao micro:bit. O modo palco não precisa dele.",
+  "version": "1.0.0",
+  "minimumVersion": "1.0.0",
+  "compatibilityVersion": "cpython-3.11-microbit-v1",
+  "requiredFiles": [
+    "tools/Python/bin/python3",
+    "tools/Python/lib/python3.11/site-packages/microfs.py",
+    "tools/Python/lib/python3.11/site-packages/uflash.py",
+    "tools/Python/lib/python3.11/site-packages/serial"
+  ],
+  "validation": {
+    "type": "python",
+    "executable": "tools/Python/bin/python3",
+    "commands": [["-m", "microfs", "--help"], ["-m", "uflash", "--help"]]
+  },
+  "variants": {
+    "linux-x64": {
+      "url": "https://github.com/educarbr11/openblock-desktop-dogo/releases/download/microbit-python-pack-v1.0.0/dogoblock-microbit-python-pack-v1.0.0-linux-x64.tar.gz",
+      "sha256": "a70b74b290588512556ad53baa0e81b1aec1d3f4ec121d7dc9151498a6655d98",
+      "archiveBytes": 29176478,
+      "installedBytes": 78275883,
+      "requiredFiles": [
+        "tools/Python/bin/python3",
+        "tools/Python/lib/python3.11/site-packages/microfs.py",
+        "tools/Python/lib/python3.11/site-packages/uflash.py",
+        "tools/Python/lib/python3.11/site-packages/serial"
+      ]
+    }
+  }
+}

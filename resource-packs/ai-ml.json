@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "ai-ml",
+  "displayName": "Recursos de IA e aprendizagem de máquina",
+  "description": "Modelos locais para Aprendizagem de Máquina e Detecção de Mãos. Funciona offline após instalar.",
+  "version": "1.0.0",
+  "minimumVersion": "1.0.0",
+  "compatibilityVersion": "ml-vendor-v1",
+  "requiredFiles": [
+    "tfjs/4.22.0/tf.min.js",
+    "knn-classifier/1.2.6/knn-classifier.min.js",
+    "mobilenet/2.1.1/mobilenet.min.js",
+    "mobilenet/model/model.json",
+    "mediapipe-hands/0.4.1675469240/hands.js",
+    "mediapipe-hands/0.4.1675469240/hands_solution_simd_wasm_bin.wasm",
+    "hand-pose-detection/2.0.0/hand-pose-detection.min.js"
+  ],
+  "validation": {"type": "assets"},
+  "variants": {
+    "universal": {
+      "url": "https://github.com/educarbr11/openblock-desktop-dogo/releases/download/ai-ml-pack-v1.0.0/dogoblock-ai-ml-pack-v1.0.0.tar.gz",
+      "sha256": "eb948c2062f488689a000a8b3944d0e223c7d4d23fc3a7ec33f02abbac4d61dd",
+      "archiveBytes": 26589270,
+      "installedBytes": 40884470,
+      "requiredFiles": [
+        "tfjs/4.22.0/tf.min.js",
+        "knn-classifier/1.2.6/knn-classifier.min.js",
+        "mobilenet/2.1.1/mobilenet.min.js",
+        "mobilenet/model/model.json",
+        "mediapipe-hands/0.4.1675469240/hands.js",
+        "mediapipe-hands/0.4.1675469240/hands_solution_simd_wasm_bin.wasm",
+        "hand-pose-detection/2.0.0/hand-pose-detection.min.js"
+      ]
+    }
+  }
+}

@@ -1,0 +1,148 @@
+name: Build optional resource packs
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Resource pack version
+        required: true
+        default: 1.0.0
+        type: string
+      publish:
+        description: Publish the GitHub Releases
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: '22.23.0'
+  PACK_VERSION: ${{ inputs.version || '1.0.0' }}
+
+jobs:
+  build-ai-ml:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout OpenBlock GUI assets
+        uses: actions/checkout@v4
+        with:
+          repository: educarbr11/openblock-gui-dogo
+          path: openblock-gui
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build AI/ML pack
+        env:
+          OPENBLOCK_GUI_PATH: ${{ github.workspace }}/openblock-gui
+        run: npm run resource-pack:ai-ml -- --version=${PACK_VERSION}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ai-ml-pack-universal
+          path: |
+            dist/resource-packs/dogoblock-ai-ml-pack-v${{ env.PACK_VERSION }}.tar.gz
+            dist/resource-packs/dogoblock-ai-ml-pack-v${{ env.PACK_VERSION }}.tar.gz.sha256
+            dist/resource-packs/ai-ml-universal.json
+          if-no-files-found: error
+          retention-days: 7
+
+  build-platform-packs:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            variant: linux-x64
+          - os: windows-2022
+            variant: win32-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Allow bundled 7-Zip to run
+        if: runner.os != 'Windows'
+        run: node -e "require('fs').chmodSync(require('7zip-bin').path7za, 0o755)"
+
+      - name: Download complete tool bundle
+        run: npm run fetch:tools
+
+      - name: Build Arduino R4 pack
+        run: npm run resource-pack:arduino-r4 -- --version=${{ env.PACK_VERSION }}
+
+      - name: Build micro:bit Python pack
+        run: npm run resource-pack:microbit-python -- --version=${{ env.PACK_VERSION }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-pack-${{ matrix.variant }}
+          path: |
+            dist/resource-packs/dogoblock-arduino-r4-pack-v${{ env.PACK_VERSION }}-${{ matrix.variant }}.tar.gz
+            dist/resource-packs/dogoblock-arduino-r4-pack-v${{ env.PACK_VERSION }}-${{ matrix.variant }}.tar.gz.sha256
+            dist/resource-packs/arduino-r4-${{ matrix.variant }}.json
+            dist/resource-packs/dogoblock-microbit-python-pack-v${{ env.PACK_VERSION }}-${{ matrix.variant }}.tar.gz
+            dist/resource-packs/dogoblock-microbit-python-pack-v${{ env.PACK_VERSION }}-${{ matrix.variant }}.tar.gz.sha256
+            dist/resource-packs/microbit-python-${{ matrix.variant }}.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    if: ${{ inputs.publish }}
+    needs: [build-ai-ml, build-platform-packs]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-pack-*'
+          path: dist/resource-packs
+          merge-multiple: true
+
+      - name: Merge and verify manifests
+        run: |
+          for pack in ai-ml arduino-r4 microbit-python; do
+            npm run resource-pack:merge -- "$pack" dist/resource-packs "dist/resource-packs/$pack.json"
+            npm run resource-pack:verify -- dist/resource-packs "$pack"
+          done
+
+      - name: Publish optional pack releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for pack in ai-ml arduino-r4 microbit-python; do
+            tag="$pack-pack-v${PACK_VERSION}"
+            gh release view "$tag" >/dev/null 2>&1 || \
+              gh release create "$tag" --title "DoGoBlock $pack Pack v${PACK_VERSION}" \
+                --notes "Optional offline resource pack for DoGoBlock Desktop."
+            find dist/resource-packs -maxdepth 1 -type f \
+              \( -name "dogoblock-$pack-pack-v${PACK_VERSION}*.tar.gz" \
+              -o -name "dogoblock-$pack-pack-v${PACK_VERSION}*.sha256" \
+              -o -name "$pack.json" \) -print0 | \
+              xargs -0 gh release upload "$tag" --clobber
+          done

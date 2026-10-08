@@ -7,9 +7,9 @@ const {spawnSync} = require('child_process');
 const tar = require('tar');
 const {URL} = require('url');
 
-const PACK_ID_ESP32 = 'esp32';
-const SUPPORTED_PACKS = new Set([PACK_ID_ESP32]);
+const SUPPORTED_PACKS = new Set(['esp32', 'ai-ml', 'arduino-r4', 'microbit-python']);
 const MAX_REDIRECTS = 5;
+const INSTALL_HEADROOM_BYTES = 100 * 1024 * 1024;
 
 class ResourcePackError extends Error {
     constructor (code, message) {
@@ -34,14 +34,24 @@ const compareVersions = (left, right) => {
 };
 
 class ResourcePackManager extends EventEmitter {
-    constructor ({dataPath, manifestPath, platform = process.platform, arch = process.arch}) {
+    constructor ({
+        dataPath,
+        manifestDirectory,
+        manifestPath,
+        manifestPaths,
+        platform = process.platform,
+        arch = process.arch
+    }) {
         super();
         this._rootPath = path.join(dataPath, 'resource-packs');
-        this._manifestPath = manifestPath;
+        this._manifestDirectory = manifestDirectory || null;
+        this._legacyManifestPath = manifestPath || null;
+        this._manifestPaths = manifestPaths || {};
         this._platform = platform;
         this._arch = arch;
         this._operations = new Map();
         this._leases = new Map();
+        this._leaseRecords = new Map();
         fs.ensureDirSync(this._rootPath);
         this._cleanupInterruptedOperations();
     }
@@ -52,13 +62,35 @@ class ResourcePackManager extends EventEmitter {
         }
     }
 
+    _getManifestPath (packId) {
+        if (this._manifestPaths[packId]) return this._manifestPaths[packId];
+        if (this._manifestDirectory) return path.join(this._manifestDirectory, `${packId}.json`);
+        if (this._legacyManifestPath) return this._legacyManifestPath;
+        throw new ResourcePackError('MISSING_MANIFEST', 'O manifesto do pacote nao foi configurado.');
+    }
+
     _readManifest (packId) {
         this._assertPackId(packId);
-        const manifest = fs.readJsonSync(this._manifestPath);
+        const manifestPath = this._getManifestPath(packId);
+        if (!fs.existsSync(manifestPath)) {
+            throw new ResourcePackError('MISSING_MANIFEST', `Manifesto do pacote ${packId} nao encontrado.`);
+        }
+        const manifest = fs.readJsonSync(manifestPath);
         if (manifest.schemaVersion !== 1 || manifest.id !== packId) {
-            throw new ResourcePackError('INVALID_MANIFEST', 'O manifesto do pacote ESP32 e invalido.');
+            throw new ResourcePackError('INVALID_MANIFEST', `O manifesto do pacote ${packId} e invalido.`);
         }
         return manifest;
+    }
+
+    _packName (manifestOrId) {
+        if (manifestOrId && typeof manifestOrId === 'object') {
+            return manifestOrId.displayName || manifestOrId.id;
+        }
+        try {
+            return this._readManifest(manifestOrId).displayName || manifestOrId;
+        } catch (error) {
+            return manifestOrId;
+        }
     }
 
     _variantKey () {
@@ -66,7 +98,8 @@ class ResourcePackManager extends EventEmitter {
     }
 
     _getVariant (manifest) {
-        return manifest.variants && manifest.variants[this._variantKey()];
+        const variants = manifest.variants || {};
+        return variants[this._variantKey()] || variants.universal;
     }
 
     _packRoot (packId) {
@@ -81,7 +114,7 @@ class ResourcePackManager extends EventEmitter {
         return path.join(this._packRoot(packId), 'active.json');
     }
 
-    _readActiveInstallation (packId) {
+    _readActiveInstallation (packId, expectedManifest = null) {
         const activePath = this._activePath(packId);
         if (!fs.existsSync(activePath)) return null;
         try {
@@ -91,25 +124,30 @@ class ResourcePackManager extends EventEmitter {
             if (!fs.existsSync(packManifestPath)) return null;
             const packManifest = fs.readJsonSync(packManifestPath);
             if (packManifest.id !== packId || packManifest.version !== active.version) return null;
-            if (!this._criticalFilesExist(installPath, packManifest)) return null;
+            const manifest = expectedManifest || this._readManifest(packId);
+            if (!this._criticalFilesExist(installPath, manifest)) return null;
             return {active, packManifest, installPath};
         } catch (error) {
             return null;
         }
     }
 
-    _criticalFilesExist (installPath, packManifest) {
-        const arduinoRoot = path.join(installPath, 'tools', 'Arduino');
-        const cliName = this._platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli';
-        const coreVersion = safeVersion(packManifest.coreVersion);
-        const required = [
-            path.join(arduinoRoot, cliName),
-            path.join(arduinoRoot, 'packages', 'esp32', 'hardware', 'esp32', coreVersion, 'platform.txt'),
-            path.join(arduinoRoot, 'packages', 'esp32', 'tools', 'esp-x32'),
-            path.join(arduinoRoot, 'packages', 'esp32', 'tools', 'esp32-arduino-libs'),
-            path.join(arduinoRoot, 'packages', 'esp32', 'tools', 'esptool_py')
-        ];
-        return required.every(candidate => fs.existsSync(candidate));
+    _criticalFilesExist (installPath, manifest) {
+        const variant = this._getVariant(manifest) || {};
+        let requiredFiles = variant.requiredFiles || manifest.requiredFiles || [];
+        if (requiredFiles.length === 0 && manifest.id === 'esp32') {
+            const cliName = this._platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli';
+            requiredFiles = [
+                `tools/Arduino/${cliName}`,
+                `tools/Arduino/packages/esp32/hardware/esp32/${safeVersion(manifest.coreVersion)}/platform.txt`,
+                'tools/Arduino/packages/esp32/tools/esp-x32',
+                'tools/Arduino/packages/esp32/tools/esp32-arduino-libs',
+                'tools/Arduino/packages/esp32/tools/esptool_py'
+            ];
+        }
+        return requiredFiles.length > 0 && requiredFiles.every(relativePath =>
+            fs.existsSync(path.join(installPath, relativePath))
+        );
     }
 
     getStatus (packId) {
@@ -126,10 +164,12 @@ class ResourcePackManager extends EventEmitter {
         const variant = this._getVariant(manifest);
         const base = {
             id: packId,
+            displayName: manifest.displayName || packId,
+            description: manifest.description || '',
             version: manifest.version,
             minimumVersion: manifest.minimumVersion,
             coreVersion: manifest.coreVersion,
-            platform: this._variantKey(),
+            platform: variant === (manifest.variants || {}).universal ? 'universal' : this._variantKey(),
             downloadBytes: (variant && variant.archiveBytes) || 0,
             installedBytes: (variant && variant.installedBytes) || 0,
             canUse: false
@@ -137,17 +177,20 @@ class ResourcePackManager extends EventEmitter {
         if (!variant || !variant.url || !/^[a-f0-9]{64}$/i.test(variant.sha256 || '')) {
             return Object.assign(base, {
                 phase: 'unsupported',
-                message: 'O pacote ESP32 ainda nao esta disponivel para este sistema.'
+                message: `${base.displayName} ainda nao esta disponivel para este sistema.`
             });
         }
 
-        const installed = this._readActiveInstallation(packId);
+        const installed = this._readActiveInstallation(packId, manifest);
         if (!installed) return Object.assign(base, {phase: 'missing'});
 
         const installedVersion = installed.packManifest.version;
-        const compatible = installed.packManifest.coreVersion === manifest.coreVersion &&
-            compareVersions(installedVersion, manifest.minimumVersion) >= 0;
-        if (!compatible) {
+        const expectedCompatibility = manifest.compatibilityVersion || manifest.coreVersion;
+        const installedCompatibility = installed.packManifest.compatibilityVersion ||
+            installed.packManifest.coreVersion;
+        const compatibleRuntime = !expectedCompatibility || installedCompatibility === expectedCompatibility;
+        const compatibleVersion = compareVersions(installedVersion, manifest.minimumVersion) >= 0;
+        if (!compatibleRuntime || !compatibleVersion) {
             return Object.assign(base, {
                 phase: 'updateAvailable',
                 installedVersion,
@@ -173,6 +216,7 @@ class ResourcePackManager extends EventEmitter {
     _errorStatus (packId, error) {
         return {
             id: packId,
+            displayName: this._packName(packId),
             phase: 'error',
             canUse: false,
             errorCode: error.code || 'UNKNOWN_ERROR',
@@ -190,6 +234,8 @@ class ResourcePackManager extends EventEmitter {
         const variant = this._getVariant(manifest) || {};
         return Object.assign({
             id: manifest.id,
+            displayName: manifest.displayName || manifest.id,
+            description: manifest.description || '',
             phase,
             version: manifest.version,
             coreVersion: manifest.coreVersion,
@@ -203,14 +249,18 @@ class ResourcePackManager extends EventEmitter {
     async install (packId) {
         this._assertPackId(packId);
         if (this._operations.has(packId)) {
-            throw new ResourcePackError('PACK_BUSY', 'Ja existe uma operacao em andamento para o pacote ESP32.');
+            throw new ResourcePackError(
+                'PACK_BUSY',
+                `Ja existe uma operacao em andamento para ${this._packName(packId)}.`
+            );
         }
         const manifest = this._readManifest(packId);
         const variant = this._getVariant(manifest);
         if (!variant || !variant.url || !/^[a-f0-9]{64}$/i.test(variant.sha256 || '')) {
             throw new ResourcePackError('UNSUPPORTED_PLATFORM',
-                'O pacote ESP32 ainda nao esta disponivel para este sistema.');
+                `${this._packName(manifest)} ainda nao esta disponivel para este sistema.`);
         }
+        this._assertAvailableSpace(variant);
 
         const controller = new AbortController();
         const operation = {
@@ -224,9 +274,12 @@ class ResourcePackManager extends EventEmitter {
         const archivePath = path.join(packRoot, `${safeVersion(manifest.version)}.tar.gz.partial`);
         const stagingPath = path.join(packRoot, `${safeVersion(manifest.version)}.staging`);
         const installPath = this._versionPath(packId, manifest.version);
+        const previousPath = `${installPath}.previous`;
+        let installationSwapped = false;
         fs.ensureDirSync(packRoot);
         fs.removeSync(archivePath);
         fs.removeSync(stagingPath);
+        fs.removeSync(previousPath);
 
         try {
             const download = await this._download(variant.url, archivePath, controller.signal, progress => {
@@ -234,16 +287,13 @@ class ResourcePackManager extends EventEmitter {
             });
             if (variant.archiveBytes > 0 && download.bytes !== variant.archiveBytes) {
                 throw new ResourcePackError('SIZE_MISMATCH',
-                    'O tamanho do pacote ESP32 baixado nao corresponde ao manifesto. Tente novamente.');
+                    `O tamanho baixado de ${this._packName(manifest)} nao corresponde ao manifesto.`);
             }
             if (download.digest.toLowerCase() !== variant.sha256.toLowerCase()) {
                 throw new ResourcePackError('CHECKSUM_MISMATCH',
-                    'A verificacao de seguranca do pacote ESP32 falhou. Tente baixar novamente.');
+                    `A verificacao de seguranca de ${this._packName(manifest)} falhou. Tente novamente.`);
             }
-
-            if (controller.signal.aborted) {
-                throw new ResourcePackError('CANCELLED', 'A instalacao do pacote ESP32 foi cancelada.');
-            }
+            if (controller.signal.aborted) throw this._cancelledError(manifest);
 
             this._setOperationStatus(packId, this._operationStatus(manifest, 'extracting'));
             fs.ensureDirSync(stagingPath);
@@ -255,26 +305,24 @@ class ResourcePackManager extends EventEmitter {
                     const isLink = entry && ['Link', 'SymbolicLink'].indexOf(entry.type) !== -1;
                     if (!this._isSafeArchivePath(entryPath) || isLink) {
                         throw new ResourcePackError('INVALID_ARCHIVE',
-                            'O pacote ESP32 contem um caminho de arquivo inseguro.');
+                            `O pacote ${this._packName(manifest)} contem um caminho inseguro.`);
                     }
                     return true;
                 }
             });
-
-            if (controller.signal.aborted) {
-                throw new ResourcePackError('CANCELLED', 'A instalacao do pacote ESP32 foi cancelada.');
-            }
+            if (controller.signal.aborted) throw this._cancelledError(manifest);
 
             this._setOperationStatus(packId, this._operationStatus(manifest, 'validating'));
             this._validateExtractedPack(stagingPath, manifest);
-
             if ((this._leases.get(packId) || 0) > 0) {
                 throw new ResourcePackError('PACK_IN_USE',
-                    'O pacote ESP32 esta sendo usado por uma compilacao ou envio.');
+                    `${this._packName(manifest)} esta sendo usado e nao pode ser atualizado agora.`);
             }
-            fs.removeSync(installPath);
+            if (fs.existsSync(installPath)) fs.moveSync(installPath, previousPath, {overwrite: false});
             fs.moveSync(stagingPath, installPath, {overwrite: false});
+            installationSwapped = true;
             this._writeActiveInstallation(packId, manifest.version);
+            fs.removeSync(previousPath);
             this._removeInactiveVersions(packId, manifest.version);
             fs.removeSync(archivePath);
 
@@ -285,9 +333,10 @@ class ResourcePackManager extends EventEmitter {
         } catch (error) {
             fs.removeSync(archivePath);
             fs.removeSync(stagingPath);
-            const normalized = this._normalizeInstallError(error, controller.signal.aborted);
-            const status = this._errorStatus(packId, normalized);
-            this.emit('progress', status);
+            if (installationSwapped) fs.removeSync(installPath);
+            if (fs.existsSync(previousPath)) fs.moveSync(previousPath, installPath, {overwrite: true});
+            const normalized = this._normalizeInstallError(error, controller.signal.aborted, manifest);
+            this.emit('progress', this._errorStatus(packId, normalized));
             throw normalized;
         } finally {
             this._operations.delete(packId);
@@ -305,11 +354,11 @@ class ResourcePackManager extends EventEmitter {
     remove (packId) {
         this._assertPackId(packId);
         if (this._operations.has(packId)) {
-            throw new ResourcePackError('PACK_BUSY', 'Aguarde a operacao do pacote ESP32 terminar.');
+            throw new ResourcePackError('PACK_BUSY', `Aguarde a operacao de ${this._packName(packId)} terminar.`);
         }
         if ((this._leases.get(packId) || 0) > 0) {
             throw new ResourcePackError('PACK_IN_USE',
-                'O pacote ESP32 esta sendo usado por uma compilacao ou envio.');
+                `${this._packName(packId)} esta sendo usado e nao pode ser removido agora.`);
         }
         fs.removeSync(this._packRoot(packId));
         const status = this.getStatus(packId);
@@ -318,37 +367,100 @@ class ResourcePackManager extends EventEmitter {
     }
 
     acquire (config, defaultToolsPath) {
-        if (!this._isEsp32Config(config)) {
-            return {toolsPath: defaultToolsPath, release: () => {}};
+        const packId = this._resolveToolsPack(config);
+        if (!packId) return {toolsPath: defaultToolsPath, release: () => {}};
+        const lease = this._acquireInstalledPack(packId);
+        return {
+            toolsPath: path.join(lease.installPath, 'tools'),
+            release: lease.release
+        };
+    }
+
+    acquirePack (packId, ownerId = null) {
+        const lease = this._acquireInstalledPack(packId, ownerId);
+        return {
+            id: packId,
+            leaseId: lease.leaseId,
+            installPath: lease.installPath,
+            status: this.getStatus(packId)
+        };
+    }
+
+    releasePack (leaseId) {
+        const record = this._leaseRecords.get(leaseId);
+        if (!record) return false;
+        this._leaseRecords.delete(leaseId);
+        const next = Math.max(0, (this._leases.get(record.packId) || 1) - 1);
+        this._leases.set(record.packId, next);
+        return true;
+    }
+
+    releaseOwner (ownerId) {
+        Array.from(this._leaseRecords.entries()).forEach(([leaseId, record]) => {
+            if (record.ownerId === ownerId) this.releasePack(leaseId);
+        });
+    }
+
+    resolvePackFile (packId, relativePath) {
+        this._assertPackId(packId);
+        const installed = this._readActiveInstallation(packId);
+        if (!installed) throw new ResourcePackError('PACK_REQUIRED', `${this._packName(packId)} nao esta instalado.`);
+        const normalized = path.posix.normalize(String(relativePath || '').replace(/\\/g, '/'));
+        if (!normalized || normalized === '..' || normalized.indexOf('../') === 0 || path.isAbsolute(normalized)) {
+            throw new ResourcePackError('INVALID_PATH', 'Caminho de recurso invalido.');
         }
-        const status = this.getStatus(PACK_ID_ESP32);
+        const root = fs.realpathSync(installed.installPath);
+        const candidate = path.resolve(root, normalized);
+        if (candidate !== root && candidate.indexOf(`${root}${path.sep}`) !== 0) {
+            throw new ResourcePackError('INVALID_PATH', 'Caminho de recurso invalido.');
+        }
+        if (!fs.existsSync(candidate) || !fs.statSync(candidate).isFile()) {
+            throw new ResourcePackError('RESOURCE_NOT_FOUND', 'Recurso opcional nao encontrado.');
+        }
+        const realCandidate = fs.realpathSync(candidate);
+        if (realCandidate.indexOf(`${root}${path.sep}`) !== 0) {
+            throw new ResourcePackError('INVALID_PATH', 'O recurso solicitado esta fora do pacote.');
+        }
+        return realCandidate;
+    }
+
+    _acquireInstalledPack (packId, ownerId = null) {
+        const status = this.getStatus(packId);
         if (!status.canUse) {
             const error = new ResourcePackError('PACK_REQUIRED',
-                'Instale o suporte ESP32 antes de compilar ou enviar o programa.');
+                `Instale ${status.displayName || packId} antes de continuar.`);
             error.status = status;
             throw error;
         }
-        const installed = this._readActiveInstallation(PACK_ID_ESP32);
-        if (!installed) {
-            throw new ResourcePackError('PACK_REQUIRED', 'O pacote ESP32 instalado nao foi encontrado.');
-        }
-        this._leases.set(PACK_ID_ESP32, (this._leases.get(PACK_ID_ESP32) || 0) + 1);
+        const installed = this._readActiveInstallation(packId);
+        if (!installed) throw new ResourcePackError('PACK_REQUIRED', `${this._packName(packId)} nao foi encontrado.`);
+        const leaseId = crypto.randomBytes(16).toString('hex');
+        this._leases.set(packId, (this._leases.get(packId) || 0) + 1);
+        this._leaseRecords.set(leaseId, {packId, ownerId});
         let released = false;
         return {
-            toolsPath: path.join(installed.installPath, 'tools'),
+            installPath: installed.installPath,
+            leaseId,
             release: () => {
                 if (released) return;
                 released = true;
-                const next = Math.max(0, (this._leases.get(PACK_ID_ESP32) || 1) - 1);
-                this._leases.set(PACK_ID_ESP32, next);
+                this.releasePack(leaseId);
             }
         };
     }
 
-    _isEsp32Config (config) {
+    _resolveToolsPack (config) {
+        if (config && config.resourcePackId) return config.resourcePackId;
+        if (config && config.type === 'microbit') return 'microbit-python';
         const fqbn = config && config.fqbn;
         const values = typeof fqbn === 'object' ? Object.keys(fqbn || {}).map(key => fqbn[key]) : [fqbn];
-        return values.some(value => typeof value === 'string' && value.indexOf('esp32:esp32:') === 0);
+        if (values.some(value => typeof value === 'string' && value.indexOf('esp32:esp32:') === 0)) {
+            return 'esp32';
+        }
+        if (values.some(value => typeof value === 'string' && value.indexOf('arduino:renesas_uno:') === 0)) {
+            return 'arduino-r4';
+        }
+        return null;
     }
 
     _writeActiveInstallation (packId, version) {
@@ -375,6 +487,11 @@ class ResourcePackManager extends EventEmitter {
             fs.readdirSync(packRoot).forEach(name => {
                 if (name.endsWith('.partial') || name.endsWith('.staging') || name.endsWith('.tmp')) {
                     fs.removeSync(path.join(packRoot, name));
+                } else if (name.endsWith('.previous')) {
+                    const previousPath = path.join(packRoot, name);
+                    const installPath = path.join(packRoot, name.slice(0, -'.previous'.length));
+                    if (fs.existsSync(installPath)) fs.removeSync(previousPath);
+                    else fs.moveSync(previousPath, installPath, {overwrite: false});
                 }
             });
         });
@@ -389,61 +506,102 @@ class ResourcePackManager extends EventEmitter {
     _validateExtractedPack (stagingPath, expectedManifest) {
         const internalManifestPath = path.join(stagingPath, 'resource-pack.json');
         if (!fs.existsSync(internalManifestPath)) {
-            throw new ResourcePackError('INVALID_ARCHIVE', 'O pacote ESP32 nao possui um manifesto interno.');
+            throw new ResourcePackError('INVALID_ARCHIVE',
+                `${this._packName(expectedManifest)} nao possui manifesto interno.`);
         }
         const internal = fs.readJsonSync(internalManifestPath);
+        const expectedPlatform = this._getVariant(expectedManifest) === (expectedManifest.variants || {}).universal ?
+            'universal' : this._variantKey();
+        const expectedCompatibility = expectedManifest.compatibilityVersion || expectedManifest.coreVersion;
+        const internalCompatibility = internal.compatibilityVersion || internal.coreVersion;
         if (internal.schemaVersion !== 1 || internal.id !== expectedManifest.id ||
-            internal.version !== expectedManifest.version || internal.coreVersion !== expectedManifest.coreVersion ||
-            internal.platform !== this._variantKey()) {
-            throw new ResourcePackError('INVALID_ARCHIVE', 'O pacote ESP32 nao e compativel com este aplicativo.');
+            internal.version !== expectedManifest.version || internal.platform !== expectedPlatform ||
+            (expectedCompatibility && internalCompatibility !== expectedCompatibility)) {
+            throw new ResourcePackError('INVALID_ARCHIVE',
+                `${this._packName(expectedManifest)} nao e compativel com este aplicativo.`);
         }
-        if (!this._criticalFilesExist(stagingPath, internal)) {
-            throw new ResourcePackError('INCOMPLETE_PACK', 'O pacote ESP32 esta incompleto.');
+        if (!this._criticalFilesExist(stagingPath, expectedManifest)) {
+            throw new ResourcePackError('INCOMPLETE_PACK', `${this._packName(expectedManifest)} esta incompleto.`);
         }
-        this._validateArduinoCli(stagingPath, internal);
+        const validation = expectedManifest.validation || {};
+        if (validation.type === 'arduino') this._validateArduinoCli(stagingPath, expectedManifest, validation);
+        if (validation.type === 'python') this._validatePython(stagingPath, expectedManifest, validation);
     }
 
-    _validateArduinoCli (stagingPath, internalManifest) {
+    _validateArduinoCli (stagingPath, manifest, validation) {
         const arduinoRoot = path.join(stagingPath, 'tools', 'Arduino');
         const cli = path.join(arduinoRoot, this._platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
         if (this._platform !== 'win32') fs.chmodSync(cli, 0o755);
         const validationPath = path.join(stagingPath, '.validation');
         const configPath = path.join(validationPath, 'arduino-cli.yaml');
         fs.ensureDirSync(validationPath);
-        this._runCli(cli, ['config', 'init', '--dest-file', configPath]);
-        const directories = {
-            data: arduinoRoot,
-            downloads: path.join(arduinoRoot, 'staging'),
-            user: arduinoRoot
-        };
-        Object.keys(directories).forEach(name => {
-            this._runCli(cli, [
-                'config', 'set', `directories.${name}`, directories[name], '--config-file', configPath
-            ]);
-        });
-        const cores = this._runCli(cli, ['core', 'list', '--config-file', configPath]).stdout;
-        if (cores.indexOf('esp32:esp32') === -1 || cores.indexOf(internalManifest.coreVersion) === -1) {
-            throw new ResourcePackError('INCOMPLETE_PACK', 'O Arduino CLI nao encontrou o core ESP32 esperado.');
+        this._runCommand(cli, ['config', 'init', '--dest-file', configPath], manifest);
+        const directories = {data: arduinoRoot, downloads: path.join(arduinoRoot, 'staging'), user: arduinoRoot};
+        Object.keys(directories).forEach(name => this._runCommand(cli, [
+            'config', 'set', `directories.${name}`, directories[name], '--config-file', configPath
+        ], manifest));
+        const cores = this._runCommand(cli, ['core', 'list', '--config-file', configPath], manifest).stdout;
+        if (validation.coreId && cores.indexOf(validation.coreId) === -1) {
+            throw new ResourcePackError('INCOMPLETE_PACK',
+                `O Arduino CLI nao encontrou o core esperado em ${this._packName(manifest)}.`);
         }
-        this._runCli(cli, ['board', 'details', '--fqbn', 'esp32:esp32:esp32', '--config-file', configPath]);
-        this._runCli(cli, ['board', 'details', '--fqbn', 'esp32:esp32:esp32s3', '--config-file', configPath]);
+        (validation.boardFqbns || []).forEach(fqbn => this._runCommand(cli, [
+            'board', 'details', '--fqbn', fqbn, '--config-file', configPath
+        ], manifest));
         fs.removeSync(validationPath);
     }
 
-    _runCli (cli, args) {
-        const result = spawnSync(cli, args, {encoding: 'utf8'});
+    _validatePython (stagingPath, manifest, validation) {
+        const executable = path.join(stagingPath, validation.executable);
+        if (this._platform !== 'win32') fs.chmodSync(executable, 0o755);
+        (validation.commands || []).forEach(args => this._runCommand(executable, args, manifest));
+    }
+
+    _runCommand (executable, args, manifest) {
+        const result = spawnSync(executable, args, {encoding: 'utf8'});
         if (result.error || result.status !== 0) {
             const detail = (result.error && result.error.message) || result.stderr || result.stdout || '';
             throw new ResourcePackError('PACK_VALIDATION_FAILED',
-                `Nao foi possivel validar o suporte ESP32. ${String(detail).trim()}`.trim());
+                `Nao foi possivel validar ${this._packName(manifest)}. ${String(detail).trim()}`.trim());
         }
         return result;
+    }
+
+    _assertAvailableSpace (variant) {
+        const required = (variant.archiveBytes || 0) + (variant.installedBytes || 0) + INSTALL_HEADROOM_BYTES;
+        if (required <= INSTALL_HEADROOM_BYTES) return;
+        const available = this._availableBytes(this._rootPath);
+        if (available !== null && available < required) {
+            throw new ResourcePackError('NO_SPACE',
+                'Nao ha espaco suficiente para instalar este recurso. Libere espaco e tente novamente.');
+        }
+    }
+
+    _availableBytes (targetPath) {
+        try {
+            if (this._platform === 'win32') {
+                const drive = path.parse(path.resolve(targetPath)).root.replace(/[\\:]/g, '');
+                const result = spawnSync('powershell.exe', [
+                    '-NoProfile', '-Command', `(Get-PSDrive -Name '${drive}').Free`
+                ], {encoding: 'utf8'});
+                if (result.status === 0) return Number(String(result.stdout).trim()) || null;
+                return null;
+            }
+            const result = spawnSync('df', ['-Pk', targetPath], {encoding: 'utf8'});
+            if (result.status !== 0) return null;
+            const lines = String(result.stdout).trim()
+                .split(/\r?\n/);
+            const columns = lines[lines.length - 1].trim().split(/\s+/);
+            return (Number(columns[3]) || 0) * 1024;
+        } catch (error) {
+            return null;
+        }
     }
 
     _download (url, destination, signal, onProgress, redirects = 0) {
         if (redirects > MAX_REDIRECTS) {
             return Promise.reject(new ResourcePackError('TOO_MANY_REDIRECTS',
-                'O download do pacote ESP32 excedeu o limite de redirecionamentos.'));
+                'O download excedeu o limite de redirecionamentos.'));
         }
         this._assertAllowedUrl(url);
         return new Promise((resolve, reject) => {
@@ -459,7 +617,7 @@ class ResourcePackManager extends EventEmitter {
                 if (response.statusCode !== 200) {
                     response.resume();
                     reject(new ResourcePackError('DOWNLOAD_FAILED',
-                        `Falha ao baixar o pacote ESP32. Servidor respondeu ${response.statusCode}.`));
+                        `Falha ao baixar o pacote. Servidor respondeu ${response.statusCode}.`));
                     return;
                 }
                 const total = parseInt(response.headers['content-length'], 10) || 0;
@@ -480,8 +638,7 @@ class ResourcePackManager extends EventEmitter {
                 response.on('error', reject);
             });
             request.on('error', reject);
-            const abort = () => request.destroy(new ResourcePackError('CANCELLED',
-                'A instalacao do pacote ESP32 foi cancelada.'));
+            const abort = () => request.destroy(new ResourcePackError('CANCELLED', 'A instalacao foi cancelada.'));
             if (signal.aborted) abort();
             signal.addEventListener('abort', abort, {once: true});
         });
@@ -492,30 +649,32 @@ class ResourcePackManager extends EventEmitter {
         try {
             parsed = new URL(url);
         } catch (error) {
-            throw new ResourcePackError('INVALID_URL', 'A URL do pacote ESP32 e invalida.');
+            throw new ResourcePackError('INVALID_URL', 'A URL do pacote e invalida.');
         }
         const host = parsed.hostname.toLowerCase();
         const allowedHost = host === 'github.com' || host.endsWith('.githubusercontent.com');
         if (parsed.protocol !== 'https:' || !allowedHost) {
-            throw new ResourcePackError('UNTRUSTED_URL', 'A origem do pacote ESP32 nao e permitida.');
+            throw new ResourcePackError('UNTRUSTED_URL', 'A origem do pacote nao e permitida.');
         }
     }
 
-    _normalizeInstallError (error, aborted) {
-        if (aborted || error.code === 'CANCELLED') {
-            return new ResourcePackError('CANCELLED', 'A instalacao do pacote ESP32 foi cancelada.');
-        }
+    _cancelledError (manifest) {
+        return new ResourcePackError('CANCELLED', `A instalacao de ${this._packName(manifest)} foi cancelada.`);
+    }
+
+    _normalizeInstallError (error, aborted, manifest) {
+        if (aborted || error.code === 'CANCELLED') return this._cancelledError(manifest);
         if (error.code === 'ENOSPC') {
             return new ResourcePackError('NO_SPACE',
-                'Nao ha espaco suficiente para instalar o suporte ESP32. Libere espaco e tente novamente.');
+                `Nao ha espaco suficiente para instalar ${this._packName(manifest)}.`);
         }
         if (error instanceof ResourcePackError) return error;
         return new ResourcePackError('INSTALL_FAILED',
-            `Nao foi possivel instalar o suporte ESP32. ${error.message || error}`);
+            `Nao foi possivel instalar ${this._packName(manifest)}. ${error.message || error}`);
     }
 }
 
 ResourcePackManager.ResourcePackError = ResourcePackError;
-ResourcePackManager.PACK_ID_ESP32 = PACK_ID_ESP32;
+ResourcePackManager.SUPPORTED_PACKS = SUPPORTED_PACKS;
 
 module.exports = ResourcePackManager;

@@ -66,5 +66,11 @@ if (!serialportSource.includes('_acquireTools (config)') || !serialportSource.in
         'Set OPENBLOCK_LINK_PATH to the current repository.'
     );
 }
+if (!serialportSource.includes("case 'microbit': {\n            let toolsLease = null;")) {
+    throw new Error(
+        'Desktop openblock-link does not acquire the optional Python tools for micro:bit uploads. ' +
+        'Set OPENBLOCK_LINK_PATH to the current repository.'
+    );
+}
 
 console.log('Desktop openblock-link runtime is ready.');

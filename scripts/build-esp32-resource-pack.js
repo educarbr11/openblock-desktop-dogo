@@ -26,6 +26,14 @@ const archiveName = `dogoblock-esp32-pack-v${packVersion}-${variantKey}.tar.gz`;
 const archivePath = path.join(OUTPUT_ROOT, archiveName);
 const stagingRoot = path.join(OUTPUT_ROOT, `.esp32-${variantKey}.staging`);
 const stagingArduino = path.join(stagingRoot, 'tools', 'Arduino');
+const cliName = platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli';
+const requiredFiles = [
+    `tools/Arduino/${cliName}`,
+    `tools/Arduino/packages/esp32/hardware/esp32/${CORE_VERSION}/platform.txt`,
+    'tools/Arduino/packages/esp32/tools/esp-x32',
+    'tools/Arduino/packages/esp32/tools/esp32-arduino-libs',
+    'tools/Arduino/packages/esp32/tools/esptool_py'
+];
 
 const fail = message => {
     throw new Error(`ESP32 resource pack: ${message}`);
@@ -65,7 +73,6 @@ const runCli = (cli, args) => {
 };
 
 const validatePack = () => {
-    const cliName = platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli';
     const cli = path.join(stagingArduino, cliName);
     if (platform !== 'win32') fs.chmodSync(cli, 0o755);
     const validationRoot = path.join(stagingRoot, '.validation');
@@ -106,7 +113,6 @@ const build = async () => {
     fs.ensureDirSync(stagingArduino);
     fs.ensureDirSync(OUTPUT_ROOT);
 
-    const cliName = platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli';
     [cliName, 'LICENSE.txt', 'package_index.json', 'library_index.json', 'package_esp32_index.json']
         .forEach(copyArduinoRootFile);
 
@@ -140,6 +146,7 @@ const build = async () => {
         schemaVersion: 1,
         id: 'esp32',
         version: packVersion,
+        compatibilityVersion: `arduino-esp32-${CORE_VERSION}`,
         coreVersion: CORE_VERSION,
         platform: variantKey,
         createdAt: new Date().toISOString()
@@ -162,15 +169,25 @@ const build = async () => {
     const fragment = {
         schemaVersion: 1,
         id: 'esp32',
+        displayName: 'Suporte ao ESP32',
+        description: 'Compilador e ferramentas locais para ESP32 e ESP32-S3. Funciona offline apos instalar.',
         version: packVersion,
         minimumVersion: packVersion,
+        compatibilityVersion: `arduino-esp32-${CORE_VERSION}`,
         coreVersion: CORE_VERSION,
+        requiredFiles,
+        validation: {
+            type: 'arduino',
+            coreId: 'esp32:esp32',
+            boardFqbns: ['esp32:esp32:esp32', 'esp32:esp32:esp32s3']
+        },
         variants: {
             [variantKey]: {
                 url,
                 sha256,
                 archiveBytes,
-                installedBytes
+                installedBytes,
+                requiredFiles
             }
         }
     };

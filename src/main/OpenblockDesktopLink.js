@@ -40,7 +40,7 @@ class OpenblockDesktopLink extends EventEmitter {
         this.dataPath = path.join(userDataPath, 'Data');
         this._resourcePackManager = new ResourcePackManager({
             dataPath: this.dataPath,
-            manifestPath: path.join(this.appPath, 'resource-packs', 'esp32.json')
+            manifestDirectory: path.join(this.appPath, 'resource-packs')
         });
 
         const cacheResourcesPath = path.join(this.dataPath, 'external-resources');

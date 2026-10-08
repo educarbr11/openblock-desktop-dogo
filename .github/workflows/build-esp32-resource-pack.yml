@@ -88,9 +88,9 @@ jobs:
 
       - name: Merge and verify manifest
         run: |
-          npm run resource-pack:merge -- dist/resource-packs dist/resource-packs/esp32.json
+          npm run resource-pack:merge -- esp32 dist/resource-packs dist/resource-packs/esp32.json
           cp dist/resource-packs/esp32.json resource-packs/esp32.json
-          npm run resource-pack:verify
+          npm run resource-pack:verify -- resource-packs esp32
           cat dist/resource-packs/*.sha256 > dist/resource-packs/SHA256SUMS
 
       - name: Publish resource pack release

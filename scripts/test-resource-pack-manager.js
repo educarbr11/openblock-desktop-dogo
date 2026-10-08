@@ -1,95 +1,172 @@
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs-extra');
 const os = require('os');
 const path = require('path');
+const tar = require('tar');
 
 const ResourcePackManager = require('../src/main/ResourcePackManager');
 
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dogoblock-resource-pack-test-'));
 const dataPath = path.join(temporaryRoot, 'Data');
-const manifestPath = path.join(temporaryRoot, 'esp32.json');
+const manifestDirectory = path.join(temporaryRoot, 'manifests');
 const platform = 'linux';
 const arch = 'x64';
+const requiredFile = 'payload/required.txt';
 
-const writeExternalManifest = (version, minimumVersion = '1.0.0') => {
-    fs.writeJsonSync(manifestPath, {
+const sha256 = filePath => crypto.createHash('sha256').update(fs.readFileSync(filePath))
+    .digest('hex');
+
+const writeManifest = (id, options = {}) => {
+    const version = options.version || '1.0.0';
+    const variantKey = id === 'ai-ml' ? 'universal' : 'linux-x64';
+    const variant = {
+        url: `https://github.com/example/release/${id}-${version}.tar.gz`,
+        sha256: options.sha256 || 'a'.repeat(64),
+        archiveBytes: options.archiveBytes || 100,
+        installedBytes: options.installedBytes || 200,
+        requiredFiles: options.requiredFiles || [requiredFile]
+    };
+    const manifest = {
         schemaVersion: 1,
-        id: 'esp32',
+        id,
+        displayName: id,
         version,
-        minimumVersion,
-        coreVersion: '3.1.3',
-        variants: {
-            'linux-x64': {
-                url: `https://github.com/example/release/esp32-${version}.tar.gz`,
-                sha256: 'a'.repeat(64),
-                archiveBytes: 100,
-                installedBytes: 200
-            }
-        }
-    });
+        minimumVersion: options.minimumVersion || '1.0.0',
+        compatibilityVersion: options.compatibilityVersion || `${id}-runtime-v1`,
+        requiredFiles: variant.requiredFiles,
+        validation: options.validation || {type: 'assets'},
+        variants: {[variantKey]: variant}
+    };
+    fs.ensureDirSync(manifestDirectory);
+    fs.writeJsonSync(path.join(manifestDirectory, `${id}.json`), manifest);
+    return manifest;
 };
 
-const installFakePack = version => {
-    const installPath = path.join(dataPath, 'resource-packs', 'esp32', version);
-    const arduinoRoot = path.join(installPath, 'tools', 'Arduino');
-    [
-        path.join(arduinoRoot, 'packages', 'esp32', 'tools', 'esp-x32'),
-        path.join(arduinoRoot, 'packages', 'esp32', 'tools', 'esp32-arduino-libs'),
-        path.join(arduinoRoot, 'packages', 'esp32', 'tools', 'esptool_py')
-    ].forEach(directory => fs.ensureDirSync(directory));
-    fs.ensureFileSync(path.join(arduinoRoot, 'arduino-cli'));
-    fs.ensureFileSync(path.join(
-        arduinoRoot,
-        'packages',
-        'esp32',
-        'hardware',
-        'esp32',
-        '3.1.3',
-        'platform.txt'
-    ));
+const installFakePack = (id, version = '1.0.0') => {
+    const installPath = path.join(dataPath, 'resource-packs', id, version);
+    fs.outputFileSync(path.join(installPath, requiredFile), id);
+    const manifest = fs.readJsonSync(path.join(manifestDirectory, `${id}.json`));
     fs.writeJsonSync(path.join(installPath, 'resource-pack.json'), {
         schemaVersion: 1,
-        id: 'esp32',
+        id,
         version,
-        coreVersion: '3.1.3',
-        platform: 'linux-x64'
+        compatibilityVersion: manifest.compatibilityVersion,
+        platform: id === 'ai-ml' ? 'universal' : 'linux-x64'
     });
-    fs.writeJsonSync(path.join(dataPath, 'resource-packs', 'esp32', 'active.json'), {version});
+    fs.writeJsonSync(path.join(dataPath, 'resource-packs', id, 'active.json'), {version});
     return installPath;
 };
 
-try {
-    writeExternalManifest('1.0.0');
-    let manager = new ResourcePackManager({dataPath, manifestPath, platform, arch});
-    assert.strictEqual(manager.getStatus('esp32').phase, 'missing');
+const makeArchive = async (id, version) => {
+    const source = path.join(temporaryRoot, `${id}-${version}`);
+    const archive = path.join(temporaryRoot, `${id}-${version}.tar.gz`);
+    fs.outputFileSync(path.join(source, requiredFile), `${id}-${version}`);
+    const manifest = fs.readJsonSync(path.join(manifestDirectory, `${id}.json`));
+    fs.writeJsonSync(path.join(source, 'resource-pack.json'), {
+        schemaVersion: 1,
+        id,
+        version,
+        compatibilityVersion: manifest.compatibilityVersion,
+        platform: id === 'ai-ml' ? 'universal' : 'linux-x64'
+    });
+    await tar.c({cwd: source, file: archive, gzip: true}, ['payload', 'resource-pack.json']);
+    return archive;
+};
 
-    const installPath = installFakePack('1.0.0');
-    manager = new ResourcePackManager({dataPath, manifestPath, platform, arch});
-    assert.strictEqual(manager.getStatus('esp32').phase, 'ready');
+class LocalArchiveManager extends ResourcePackManager {
+    constructor (options, archivePath) {
+        super(options);
+        this.archivePath = archivePath;
+    }
 
-    const avrLease = manager.acquire({fqbn: 'arduino:avr:uno'}, '/default/tools');
-    assert.strictEqual(avrLease.toolsPath, '/default/tools');
-
-    const esp32Lease = manager.acquire({fqbn: {linux: 'esp32:esp32:esp32'}}, '/default/tools');
-    assert.strictEqual(esp32Lease.toolsPath, path.join(installPath, 'tools'));
-    assert.throws(() => manager.remove('esp32'), error => error.code === 'PACK_IN_USE');
-    esp32Lease.release();
-
-    writeExternalManifest('1.1.0');
-    manager = new ResourcePackManager({dataPath, manifestPath, platform, arch});
-    const optionalUpdate = manager.getStatus('esp32');
-    assert.strictEqual(optionalUpdate.phase, 'updateAvailable');
-    assert.strictEqual(optionalUpdate.canUse, true);
-
-    writeExternalManifest('1.1.0', '1.1.0');
-    manager = new ResourcePackManager({dataPath, manifestPath, platform, arch});
-    const requiredUpdate = manager.getStatus('esp32');
-    assert.strictEqual(requiredUpdate.phase, 'updateAvailable');
-    assert.strictEqual(requiredUpdate.canUse, false);
-
-    manager.remove('esp32');
-    assert.strictEqual(manager.getStatus('esp32').phase, 'missing');
-    console.log('ResourcePackManager state, compatibility and lease tests passed.');
-} finally {
-    fs.removeSync(temporaryRoot);
+    _download (url, destination, signal, onProgress) { // eslint-disable-line no-unused-vars
+        if (signal.aborted) return Promise.reject(Object.assign(new Error('cancelled'), {code: 'CANCELLED'}));
+        fs.copyFileSync(this.archivePath, destination);
+        onProgress(1);
+        return Promise.resolve({digest: sha256(destination), bytes: fs.statSync(destination).size});
+    }
 }
+
+const managerOptions = {dataPath, manifestDirectory, platform, arch};
+
+const run = async () => {
+    ['esp32', 'ai-ml', 'arduino-r4', 'microbit-python'].forEach(id => writeManifest(id));
+    let manager = new ResourcePackManager(managerOptions);
+    assert.strictEqual(manager.getStatus('esp32').phase, 'missing');
+    assert.strictEqual(manager.getStatus('unknown').errorCode, 'UNKNOWN_PACK');
+
+    const installPaths = {};
+    ['esp32', 'ai-ml', 'arduino-r4', 'microbit-python'].forEach(id => {
+        installPaths[id] = installFakePack(id);
+    });
+    manager = new ResourcePackManager(managerOptions);
+    assert.strictEqual(manager.getStatus('ai-ml').phase, 'ready');
+    assert.strictEqual(manager.acquire({fqbn: 'arduino:avr:uno'}, '/default/tools').toolsPath, '/default/tools');
+    assert.strictEqual(
+        manager.acquire({fqbn: 'esp32:esp32:esp32'}, '/default/tools').toolsPath,
+        path.join(installPaths.esp32, 'tools')
+    );
+    assert.strictEqual(
+        manager.acquire({fqbn: 'arduino:renesas_uno:unor4wifi'}, '/default/tools').toolsPath,
+        path.join(installPaths['arduino-r4'], 'tools')
+    );
+    const pythonLease = manager.acquire({type: 'microbit'}, '/default/tools');
+    assert.strictEqual(pythonLease.toolsPath, path.join(installPaths['microbit-python'], 'tools'));
+    pythonLease.release();
+
+    const rendererLease = manager.acquirePack('ai-ml', 10);
+    assert.strictEqual(manager.resolvePackFile('ai-ml', requiredFile), path.join(installPaths['ai-ml'], requiredFile));
+    assert.throws(() => manager.resolvePackFile('ai-ml', '../outside'), error => error.code === 'INVALID_PATH');
+    assert.throws(() => manager.remove('ai-ml'), error => error.code === 'PACK_IN_USE');
+    manager.releaseOwner(10);
+    assert.strictEqual(manager.releasePack(rendererLease.leaseId), false);
+
+    writeManifest('ai-ml', {version: '1.1.0'});
+    let status = manager.getStatus('ai-ml');
+    assert.strictEqual(status.phase, 'updateAvailable');
+    assert.strictEqual(status.canUse, true);
+    const archive = await makeArchive('ai-ml', '1.1.0');
+    const archiveBytes = fs.statSync(archive).size;
+    writeManifest('ai-ml', {
+        version: '1.1.0',
+        sha256: sha256(archive),
+        archiveBytes,
+        installedBytes: 1024 * 1024
+    });
+    const installManager = new LocalArchiveManager(managerOptions, archive);
+    status = await installManager.install('ai-ml');
+    assert.strictEqual(status.phase, 'ready');
+    assert.strictEqual(status.installedVersion, '1.1.0');
+    assert.strictEqual(fs.existsSync(path.join(installPaths['ai-ml'], requiredFile)), false);
+
+    writeManifest('ai-ml', {
+        version: '1.1.0',
+        sha256: 'b'.repeat(64),
+        archiveBytes,
+        installedBytes: 1024 * 1024
+    });
+    const checksumManager = new LocalArchiveManager(managerOptions, archive);
+    await assert.rejects(checksumManager.install('ai-ml'), error => error.code === 'CHECKSUM_MISMATCH');
+    assert.strictEqual(checksumManager.getStatus('ai-ml').installedVersion, '1.1.0');
+
+    const spaceManager = new ResourcePackManager(managerOptions);
+    spaceManager._availableBytes = () => 1;
+    await assert.rejects(spaceManager.install('esp32'), error => error.code === 'NO_SPACE');
+
+    const cancelManager = new ResourcePackManager(managerOptions);
+    cancelManager._download = (url, destination, signal) => new Promise((resolve, reject) => {
+        signal.addEventListener('abort', () => reject(Object.assign(new Error('cancelled'), {code: 'CANCELLED'})));
+    });
+    const pendingInstall = cancelManager.install('esp32');
+    assert.strictEqual(cancelManager.cancel('esp32'), true);
+    await assert.rejects(pendingInstall, error => error.code === 'CANCELLED');
+
+    console.log('ResourcePackManager routing, leases, validation and atomic update tests passed.');
+};
+
+run().finally(() => fs.removeSync(temporaryRoot))
+    .catch(error => {
+        console.error(error.stack || error);
+        process.exitCode = 1;
+    });
