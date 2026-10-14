@@ -47,6 +47,9 @@ const makeConfig = function (defaultConfig, options) {
         plugins: [
             '@babel/plugin-syntax-dynamic-import',
             '@babel/plugin-transform-async-to-generator',
+            '@babel/plugin-transform-nullish-coalescing-operator',
+            '@babel/plugin-transform-numeric-separator',
+            '@babel/plugin-transform-optional-chaining',
             '@babel/plugin-proposal-object-rest-spread'
         ],
         presets: [

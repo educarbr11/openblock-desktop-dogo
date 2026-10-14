@@ -107,6 +107,7 @@ module.exports = defaultConfig => {
                 ...(hasLocalOpenBlockGUI ? [path.join(localOpenBlockGUIPath, 'src')] : []),
                 /node_modules[\\/]+scratch-[^\\/]+[\\/]+src/,
                 /node_modules[\\/]+openblock-[^\\/]+[\\/]+src/,
+                /node_modules[\\/]+@microbit[\\/]+microbit-connection[\\/]+build[\\/]+cjs/,
                 /node_modules[\\/]+pify/,
                 /node_modules[\\/]+@vernier[\\/]+godirect/
             ],
