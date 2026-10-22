@@ -92,7 +92,7 @@ const finalizePack = async ({
         displayName,
         description,
         version,
-        minimumVersion: version,
+        minimumVersion: readOption('minimum-version', version),
         compatibilityVersion,
         requiredFiles,
         validation,

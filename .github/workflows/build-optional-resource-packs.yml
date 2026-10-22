@@ -1,12 +1,15 @@
 name: Build optional resource packs
 
 on:
+  push:
+    tags:
+      - 'resource-packs-v*'
   workflow_dispatch:
     inputs:
       version:
         description: Resource pack version
         required: true
-        default: 1.0.0
+        default: 1.0.1
         type: string
       publish:
         description: Publish the GitHub Releases
@@ -19,11 +22,30 @@ permissions:
 
 env:
   NODE_VERSION: '22.23.0'
-  PACK_VERSION: ${{ inputs.version || '1.0.0' }}
 
 jobs:
-  build-ai-ml:
+  version:
     runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Resolve resource pack version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          version="${INPUT_VERSION:-${GITHUB_REF_NAME#resource-packs-v}}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid resource pack version: $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  build-ai-ml:
+    needs: version
+    runs-on: ubuntu-24.04
+    env:
+      PACK_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +53,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: educarbr11/openblock-gui-dogo
+          ref: 095956c795fb4b81f273305f6f3193f5363a2122
           path: openblock-gui
 
       - uses: actions/setup-node@v4
@@ -44,7 +67,7 @@ jobs:
       - name: Build AI/ML pack
         env:
           OPENBLOCK_GUI_PATH: ${{ github.workspace }}/openblock-gui
-        run: npm run resource-pack:ai-ml -- --version=${PACK_VERSION}
+        run: npm run resource-pack:ai-ml -- --version=${PACK_VERSION} --minimum-version=1.0.0
 
       - uses: actions/upload-artifact@v4
         with:
@@ -57,6 +80,9 @@ jobs:
           retention-days: 7
 
   build-platform-packs:
+    needs: version
+    env:
+      PACK_VERSION: ${{ needs.version.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
@@ -85,10 +111,10 @@ jobs:
         run: npm run fetch:tools
 
       - name: Build Arduino R4 pack
-        run: npm run resource-pack:arduino-r4 -- --version=${{ env.PACK_VERSION }}
+        run: npm run resource-pack:arduino-r4 -- --version=${{ env.PACK_VERSION }} --minimum-version=1.0.0
 
       - name: Build micro:bit Python pack
-        run: npm run resource-pack:microbit-python -- --version=${{ env.PACK_VERSION }}
+        run: npm run resource-pack:microbit-python -- --version=${{ env.PACK_VERSION }} --minimum-version=1.0.0
 
       - uses: actions/upload-artifact@v4
         with:
@@ -104,9 +130,11 @@ jobs:
           retention-days: 7
 
   publish:
-    if: ${{ inputs.publish }}
-    needs: [build-ai-ml, build-platform-packs]
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    needs: [version, build-ai-ml, build-platform-packs]
     runs-on: ubuntu-24.04
+    env:
+      PACK_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -139,6 +167,7 @@ jobs:
             tag="$pack-pack-v${PACK_VERSION}"
             gh release view "$tag" >/dev/null 2>&1 || \
               gh release create "$tag" --title "DoGoBlock $pack Pack v${PACK_VERSION}" \
+                --target "$GITHUB_SHA" --latest=false \
                 --notes "Optional offline resource pack for DoGoBlock Desktop."
             find dist/resource-packs -maxdepth 1 -type f \
               \( -name "dogoblock-$pack-pack-v${PACK_VERSION}*.tar.gz" \
