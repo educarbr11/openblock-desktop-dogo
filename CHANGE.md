@@ -1,5 +1,22 @@
 # Change Log
 
+## 2.6.35
+
+- **New feature**
+
+    1. Include the latest GUI, costume editor improvements and bundled offline fonts.
+    2. Update the VM and Link revisions with the current Arduino and micro:bit connection fixes.
+
+- **Build**
+
+    1. Support modern JavaScript syntax in the micro:bit connection dependency.
+    2. Verify optional resource pack manifests before generating installers.
+    3. Keep Windows and Linux releases pinned to the same dependency revisions.
+
+- **Fix bug**
+
+    1. Validate the optional micro:bit Python pack with the correct executable on Windows.
+
 ## 2.6.34
 
 - **Fix bug**

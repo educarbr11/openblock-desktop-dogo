@@ -96,6 +96,22 @@ const run = async () => {
     assert.strictEqual(manager.getStatus('esp32').phase, 'missing');
     assert.strictEqual(manager.getStatus('unknown').errorCode, 'UNKNOWN_PACK');
 
+    const pythonValidation = {
+        executable: 'tools/Python/bin/python3',
+        commands: [['-m', 'microfs', '--help'], ['-m', 'uflash', '--help']]
+    };
+    ['linux', 'win32'].forEach(testPlatform => {
+        const pythonManager = new ResourcePackManager(Object.assign({}, managerOptions, {platform: testPlatform}));
+        const stagingPath = path.join(temporaryRoot, `python-${testPlatform}`);
+        const executable = path.join(stagingPath, testPlatform === 'win32' ?
+            'tools/Python/python.exe' : pythonValidation.executable);
+        fs.outputFileSync(executable, 'test executable');
+        const commands = [];
+        pythonManager._runCommand = (command, args) => commands.push({command, args});
+        pythonManager._validatePython(stagingPath, {id: 'microbit-python'}, pythonValidation);
+        assert.deepStrictEqual(commands, pythonValidation.commands.map(args => ({command: executable, args})));
+    });
+
     const installPaths = {};
     ['esp32', 'ai-ml', 'arduino-r4', 'microbit-python'].forEach(id => {
         installPaths[id] = installFakePack(id);

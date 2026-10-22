@@ -552,7 +552,10 @@ class ResourcePackManager extends EventEmitter {
     }
 
     _validatePython (stagingPath, manifest, validation) {
-        const executable = path.join(stagingPath, validation.executable);
+        // The merged manifest may carry the Linux executable from its first fragment.
+        const relativeExecutable = this._platform === 'win32' && manifest.id === 'microbit-python' ?
+            'tools/Python/python.exe' : validation.executable;
+        const executable = path.join(stagingPath, relativeExecutable);
         if (this._platform !== 'win32') fs.chmodSync(executable, 0o755);
         (validation.commands || []).forEach(args => this._runCommand(executable, args, manifest));
     }
