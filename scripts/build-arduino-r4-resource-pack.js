@@ -51,7 +51,13 @@ const pruneDebugTools = () => {
 };
 
 const validateCompile = () => {
-    const cli = path.join(stagingArduino, cliName);
+    // GCC expands relative include paths internally; use a drive alias to stay below MAX_PATH.
+    const drive = platform === 'win32' ? ['R:', 'S:', 'T:', 'U:', 'V:', 'W:', 'X:', 'Y:', 'Z:']
+        .find(candidate => !fs.existsSync(`${candidate}\\`)) : null;
+    if (platform === 'win32' && !drive) throw new Error('No free drive letter for Arduino R4 validation.');
+    if (drive) run('subst', [drive, stagingRoot]);
+    const arduinoRoot = drive ? path.join(`${drive}\\`, 'tools', 'Arduino') : stagingArduino;
+    const cli = path.join(arduinoRoot, cliName);
     if (platform !== 'win32') fs.chmodSync(cli, 0o755);
     const validationRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dogoblock-r4-'));
     const configPath = path.join(validationRoot, 'arduino-cli.yaml');
@@ -66,19 +72,20 @@ const validateCompile = () => {
     try {
         run(cli, ['config', 'init', '--dest-file', configPath]);
         const directories = {
-            data: stagingArduino,
-            downloads: path.join(stagingArduino, 'staging'),
-            user: stagingArduino
+            data: arduinoRoot,
+            downloads: path.join(arduinoRoot, 'staging'),
+            user: arduinoRoot
         };
         Object.keys(directories).forEach(name => run(cli, [
             'config', 'set', `directories.${name}`, directories[name], '--config-file', configPath
         ]));
         ['arduino:renesas_uno:unor4wifi', 'arduino:renesas_uno:minima'].forEach(fqbn => run(cli, [
-            'compile', '--fqbn', fqbn, '--libraries', path.join(stagingArduino, 'libraries'),
+            'compile', '--fqbn', fqbn, '--libraries', path.join(arduinoRoot, 'libraries'),
             '--build-path', path.join(validationRoot, fqbn.split(':').pop()), '--config-file', configPath, sketchPath
         ]));
     } finally {
         fs.removeSync(validationRoot);
+        if (drive) run('subst', [drive, '/D']);
     }
 };
 
