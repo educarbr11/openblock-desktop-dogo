@@ -1,0 +1,11 @@
+{
+  "name": "dogoblock-resource-pack-tools",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "7zip-bin": "5.2.0",
+    "fs-extra": "11.1.0",
+    "node-7z": "3.0.0",
+    "tar": "6.2.1"
+  }
+}

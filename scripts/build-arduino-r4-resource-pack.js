@@ -11,7 +11,9 @@ const version = readOption('version', '1.0.0');
 const coreVersion = readOption('core-version', '1.3.2');
 const variantKey = `${platform}-${arch}`;
 const sourceArduino = path.join(ROOT, 'tools', 'Arduino');
-const stagingRoot = path.join(OUTPUT_ROOT, `.arduino-r4-${variantKey}.staging`);
+// The bundled Windows GCC cannot resolve its headers through long staging paths.
+const stagingRoot = platform === 'win32' ? fs.mkdtempSync(path.join(os.tmpdir(), 'dogo-r4-')) :
+    path.join(OUTPUT_ROOT, `.arduino-r4-${variantKey}.staging`);
 const stagingArduino = path.join(stagingRoot, 'tools', 'Arduino');
 const cliName = platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli';
 const requiredFiles = [
