@@ -6,6 +6,7 @@ thumbs.db
 
 # NPM
 /node_modules
+/scripts/resource-pack-tools/node_modules
 npm-*
 
 # Testing
